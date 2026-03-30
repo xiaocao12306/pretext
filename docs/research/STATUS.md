@@ -3,7 +3,7 @@
 ## 当前状态
 - [x] C0 研究启动闭环已完成
 - [x] C1 公共接口与开发面
-- [ ] C2 核心引擎全链路
+- [x] C2 核心引擎全链路
 - [ ] C3 页面与 demo dogfooding
 - [ ] C4 自动化与快照治理
 - [ ] C5 数据资产与研究沉淀
@@ -21,6 +21,7 @@
 9. 通读 `src/line-break.ts`、`src/bidi.ts`、`src/layout.test.ts`、`src/test-data.ts`
 10. 产出 [[模块-断行引擎]]、[[模块-Bidi辅助]]、[[模块-测试与共享测试数据]]
 11. 产出 [[实现-layout热路径]]、[[实现-rich-line-API调用链]]
+12. 补读 `src/text-modules.d.ts` 并确认 C2 所需 `src/` 文件已全部纳入研究
 
 ## 当前判断
 - Pretext 的产品中心是“浏览器近似一致的文本布局预测”，不是自带渲染器
@@ -32,10 +33,10 @@
 - `layout.test.ts` 与 `src/test-data.ts` 明确体现了“持久不变量测试”与“浏览器验证共享语料”分层
 
 ## 下一检查点
-1. 补齐 C2 剩余视角，并评估是否可以将 C2 标记为完成
-2. 继续阅读 `pages/accuracy.ts`、`pages/benchmark.ts`、`pages/corpus.ts`、`pages/probe.ts`
-3. 开始建立浏览器验证页面模块卡与功能卡
-4. 把页面层如何消费 `src/test-data.ts` 与 rich APIs 讲清楚
+1. 推进 C3：阅读 `pages/accuracy.ts`、`pages/benchmark.ts`、`pages/corpus.ts`、`pages/probe.ts`
+2. 建立浏览器验证页面模块卡与功能卡
+3. 把页面层如何消费 `src/test-data.ts`、rich APIs 与 report channel 讲清楚
+4. 为后续 `scripts/` 自动化研究建立页面侧入口卡
 
 ## Commit 追踪
 
@@ -45,6 +46,7 @@
 | 公共接口与工程发布面 | 1 | `docs: 研究公共接口与工程发布面` | 正常 | 下一步进入 `src/analysis.ts` 与 `src/line-break.ts` |
 | prepare 冷路径分析 | 1 | `docs: 研究prepare冷路径与分析测量模块` | 正常 | 下一步补齐断行引擎与测试视角 |
 | line-break/bidi/测试视角 | 1 | `docs: 研究断行引擎与测试语义` | 正常 | 下一步转入页面与验证层 |
+| C2 阶段收口 | 1 | `docs: 完成核心引擎C2阶段研究` | 正常 | 转入 `pages/` 验证层 |
 
 ## 风险与阻塞
 - 当前最大的研究风险不是技术卡死，而是过早钻进 `src/analysis.ts` 的局部规则而忽略页面/脚本证据链；已通过 [[00-研究路线图与检查点]] 约束顺序
