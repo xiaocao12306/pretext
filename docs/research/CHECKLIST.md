@@ -36,16 +36,16 @@
 - [x] 研究 `pages/benchmark.ts` / `pages/benchmark.html`
 - [x] 研究 `pages/corpus.ts` / `pages/corpus.html`
 - [x] 研究 `pages/probe.ts` / `pages/probe.html`
-- [ ] 研究 `pages/gatsby.ts` / `pages/gatsby.html` / `pages/gatsby.txt`
+- [x] 研究 `pages/gatsby.ts` / `pages/gatsby.html` / `pages/gatsby.txt`
 - [x] 研究 `pages/diagnostic-utils.ts` / `pages/report-utils.ts`
 - [ ] 研究 `pages/demos/**/*`
 - [ ] 研究 `pages/emoji-test.html` / `pages/justification-comparison.html`
 
 ## F. 脚本与自动化 `scripts/`
-- [ ] 研究 `scripts/browser-automation.ts`
-- [ ] 研究 `scripts/report-server.ts`
-- [ ] 研究 accuracy / benchmark / pre-wrap / probe checkers
-- [ ] 研究 corpus 相关脚本
+- [x] 研究 `scripts/browser-automation.ts`
+- [x] 研究 `scripts/report-server.ts`
+- [x] 研究 accuracy / benchmark / pre-wrap / probe checkers
+- [x] 研究 corpus 相关脚本
 - [ ] 研究 Gatsby 相关脚本
 - [ ] 研究 `scripts/package-smoke-test.ts`
 - [ ] 研究 `scripts/build-demo-site.ts`
