@@ -24,10 +24,10 @@
 - [x] 研究 `src/layout.ts`
 - [x] 研究 `src/analysis.ts`
 - [x] 研究 `src/measurement.ts`
-- [ ] 研究 `src/line-break.ts`
-- [ ] 研究 `src/bidi.ts`
-- [ ] 研究 `src/layout.test.ts`
-- [ ] 研究 `src/test-data.ts`
+- [x] 研究 `src/line-break.ts`
+- [x] 研究 `src/bidi.ts`
+- [x] 研究 `src/layout.test.ts`
+- [x] 研究 `src/test-data.ts`
 - [ ] 研究 `src/text-modules.d.ts`
 
 ## E. 页面与 demo `pages/`

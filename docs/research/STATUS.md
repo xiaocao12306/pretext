@@ -18,6 +18,9 @@
 6. 产出 [[00-研究路线图与检查点]]、[[01-仓库地图]]、[[01-项目总览]]
 7. 产出 [[模块-公共API与Prepared模型]]、[[专题-工程验证与发布面]]
 8. 产出 [[模块-文本分析]]、[[模块-文本度量与缓存]]、[[实现-prepare调用链]]
+9. 通读 `src/line-break.ts`、`src/bidi.ts`、`src/layout.test.ts`、`src/test-data.ts`
+10. 产出 [[模块-断行引擎]]、[[模块-Bidi辅助]]、[[模块-测试与共享测试数据]]
+11. 产出 [[实现-layout热路径]]、[[实现-rich-line-API调用链]]
 
 ## 当前判断
 - Pretext 的产品中心是“浏览器近似一致的文本布局预测”，不是自带渲染器
@@ -25,12 +28,14 @@
 - `src/analysis.ts` 与 `src/line-break.ts` 是当前复杂度最高的两个核心实现区
 - `pages/` 与 `scripts/` 不是附属 demo，而是正确性与性能主张的证据链
 - `prepare()` 的冷路径边界已经比较清楚：语义预处理在 `analysis.ts`，浏览器 shim 与宽度缓存主要在 `measurement.ts`
+- `line-break.ts` 的核心设计不是单一算法，而是 simple/general 双路径 + batched/streaming 共享语义
+- `layout.test.ts` 与 `src/test-data.ts` 明确体现了“持久不变量测试”与“浏览器验证共享语料”分层
 
 ## 下一检查点
-1. 推进 C2：继续研究 `src/line-break.ts` 与 `src/bidi.ts`
-2. 建立 `layout()` 热路径与 rich line APIs 的实现卡
-3. 读取 `src/layout.test.ts` 与 `src/test-data.ts`，补测试视角
-4. 完成核心引擎第一轮模块卡
+1. 补齐 C2 剩余视角，并评估是否可以将 C2 标记为完成
+2. 继续阅读 `pages/accuracy.ts`、`pages/benchmark.ts`、`pages/corpus.ts`、`pages/probe.ts`
+3. 开始建立浏览器验证页面模块卡与功能卡
+4. 把页面层如何消费 `src/test-data.ts` 与 rich APIs 讲清楚
 
 ## Commit 追踪
 
@@ -39,10 +44,13 @@
 | 研究启动与总览骨架 | 1 | `docs: 初始化研究路线图与项目总览` | 正常 | 继续进入顶层工程面与 `src/` 核心模块 |
 | 公共接口与工程发布面 | 1 | `docs: 研究公共接口与工程发布面` | 正常 | 下一步进入 `src/analysis.ts` 与 `src/line-break.ts` |
 | prepare 冷路径分析 | 1 | `docs: 研究prepare冷路径与分析测量模块` | 正常 | 下一步补齐断行引擎与测试视角 |
+| line-break/bidi/测试视角 | 1 | `docs: 研究断行引擎与测试语义` | 正常 | 下一步转入页面与验证层 |
 
 ## 风险与阻塞
-- 暂无实际阻塞
 - 当前最大的研究风险不是技术卡死，而是过早钻进 `src/analysis.ts` 的局部规则而忽略页面/脚本证据链；已通过 [[00-研究路线图与检查点]] 约束顺序
+- `2026-03-31` 推送阻塞：`git push origin main` 失败，原因是当前环境缺少 GitHub HTTPS 凭据；SSH 也返回 `Permission denied (publickey)`
+- `TASK.md` 已作为本地任务文件加入 `.git/info/exclude`，有意不纳入版本控制，避免污染仓库提交历史
+- 因远端推送凭据缺失，后续 research commit 只能先本地原子化推进；这会暂时违背“本地 ahead 不超过 3”的理想约束，但阻塞点已明确，不再在凭据问题上反复空转
 
 ## 死循环监控规则
 - 若同一内容相关 commit > 5 次：判定可能陷入牛角尖
