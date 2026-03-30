@@ -14,14 +14,14 @@
 - [x] 产出 [[01-项目总览]]
 
 ## C. 顶层工程面
-- [ ] 阅读 `CHANGELOG.md`
-- [ ] 阅读顶层 `STATUS.md`
-- [ ] 阅读 `RESEARCH.md`
-- [ ] 阅读 `TODO.md`
-- [ ] 阅读 `tsconfig.json` / `tsconfig.build.json` / `oxlintrc.json`
+- [x] 阅读 `CHANGELOG.md`
+- [x] 阅读顶层 `STATUS.md`
+- [x] 阅读 `RESEARCH.md`
+- [x] 阅读 `TODO.md`
+- [x] 阅读 `tsconfig.json` / `tsconfig.build.json` / `oxlintrc.json`
 
 ## D. 核心引擎 `src/`
-- [ ] 研究 `src/layout.ts`
+- [x] 研究 `src/layout.ts`
 - [ ] 研究 `src/analysis.ts`
 - [ ] 研究 `src/measurement.ts`
 - [ ] 研究 `src/line-break.ts`
