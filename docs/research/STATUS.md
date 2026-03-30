@@ -22,6 +22,8 @@
 10. 产出 [[模块-断行引擎]]、[[模块-Bidi辅助]]、[[模块-测试与共享测试数据]]
 11. 产出 [[实现-layout热路径]]、[[实现-rich-line-API调用链]]
 12. 补读 `src/text-modules.d.ts` 并确认 C2 所需 `src/` 文件已全部纳入研究
+13. 阅读 `pages/accuracy.ts`、`pages/benchmark.ts`、`pages/corpus.ts`、`pages/probe.ts`、`pages/diagnostic-utils.ts`、`pages/report-utils.ts`
+14. 产出 [[模块-浏览器验证页面]]、[[功能-浏览器准确性校验]]、[[功能-benchmark与性能快照]]、[[功能-corpus与probe诊断]]、[[专题-浏览器ground-truth与工程验证]]
 
 ## 当前判断
 - Pretext 的产品中心是“浏览器近似一致的文本布局预测”，不是自带渲染器
@@ -31,12 +33,13 @@
 - `prepare()` 的冷路径边界已经比较清楚：语义预处理在 `analysis.ts`，浏览器 shim 与宽度缓存主要在 `measurement.ts`
 - `line-break.ts` 的核心设计不是单一算法，而是 simple/general 双路径 + batched/streaming 共享语义
 - `layout.test.ts` 与 `src/test-data.ts` 明确体现了“持久不变量测试”与“浏览器验证共享语料”分层
+- 页面层已经显式分成 broad sweep、benchmark baseline、long-form deep diagnostic、short probe 四类工具，不同页面承担不同精度/成本层级
 
 ## 下一检查点
-1. 推进 C3：阅读 `pages/accuracy.ts`、`pages/benchmark.ts`、`pages/corpus.ts`、`pages/probe.ts`
-2. 建立浏览器验证页面模块卡与功能卡
-3. 把页面层如何消费 `src/test-data.ts`、rich APIs 与 report channel 讲清楚
-4. 为后续 `scripts/` 自动化研究建立页面侧入口卡
+1. 继续推进 C3：补读 `pages/gatsby.ts` 与 `pages/demos/**/*`
+2. 为页面层建立更细的实现卡，尤其是 report channel 与 diagnostic extractor
+3. 开始切入 `scripts/browser-automation.ts` 与各 checker
+4. 评估何时将 C3 标记为完成
 
 ## Commit 追踪
 
@@ -47,6 +50,7 @@
 | prepare 冷路径分析 | 1 | `docs: 研究prepare冷路径与分析测量模块` | 正常 | 下一步补齐断行引擎与测试视角 |
 | line-break/bidi/测试视角 | 1 | `docs: 研究断行引擎与测试语义` | 正常 | 下一步转入页面与验证层 |
 | C2 阶段收口 | 1 | `docs: 完成核心引擎C2阶段研究` | 正常 | 转入 `pages/` 验证层 |
+| 页面验证层首轮 | 1 | `docs: 研究浏览器验证页面与诊断功能` | 正常 | 下一步补 `gatsby` / demos / scripts |
 
 ## 风险与阻塞
 - 当前最大的研究风险不是技术卡死，而是过早钻进 `src/analysis.ts` 的局部规则而忽略页面/脚本证据链；已通过 [[00-研究路线图与检查点]] 约束顺序

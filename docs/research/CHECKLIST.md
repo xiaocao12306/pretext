@@ -32,12 +32,12 @@
 - [ ] 研究 `src/text-modules.d.ts`
 
 ## E. 页面与 demo `pages/`
-- [ ] 研究 `pages/accuracy.ts` / `pages/accuracy.html`
-- [ ] 研究 `pages/benchmark.ts` / `pages/benchmark.html`
-- [ ] 研究 `pages/corpus.ts` / `pages/corpus.html`
-- [ ] 研究 `pages/probe.ts` / `pages/probe.html`
+- [x] 研究 `pages/accuracy.ts` / `pages/accuracy.html`
+- [x] 研究 `pages/benchmark.ts` / `pages/benchmark.html`
+- [x] 研究 `pages/corpus.ts` / `pages/corpus.html`
+- [x] 研究 `pages/probe.ts` / `pages/probe.html`
 - [ ] 研究 `pages/gatsby.ts` / `pages/gatsby.html` / `pages/gatsby.txt`
-- [ ] 研究 `pages/diagnostic-utils.ts` / `pages/report-utils.ts`
+- [x] 研究 `pages/diagnostic-utils.ts` / `pages/report-utils.ts`
 - [ ] 研究 `pages/demos/**/*`
 - [ ] 研究 `pages/emoji-test.html` / `pages/justification-comparison.html`
 
