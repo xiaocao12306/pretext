@@ -22,8 +22,8 @@
 
 ## D. 核心引擎 `src/`
 - [x] 研究 `src/layout.ts`
-- [ ] 研究 `src/analysis.ts`
-- [ ] 研究 `src/measurement.ts`
+- [x] 研究 `src/analysis.ts`
+- [x] 研究 `src/measurement.ts`
 - [ ] 研究 `src/line-break.ts`
 - [ ] 研究 `src/bidi.ts`
 - [ ] 研究 `src/layout.test.ts`
