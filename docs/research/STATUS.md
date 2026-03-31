@@ -26,6 +26,7 @@
 14. 产出 [[模块-浏览器验证页面]]、[[功能-浏览器准确性校验]]、[[功能-benchmark与性能快照]]、[[功能-corpus与probe诊断]]、[[专题-浏览器ground-truth与工程验证]]
 15. 阅读 `pages/gatsby.ts`、`scripts/browser-automation.ts`、`scripts/report-server.ts`、`scripts/accuracy-check.ts`、`scripts/benchmark-check.ts`、`scripts/corpus-check.ts`、`shared/navigation-state.ts`
 16. 产出 [[模块-自动化脚本]]、[[功能-Gatsby诊断]]、[[实现-导航状态与报告通道]]
+17. 清理 [[CHECKLIST]]：按阶段重组、去重研究对象、修正阶段计数，消除统计脏数据
 
 ## 当前判断
 - Pretext 的产品中心是“浏览器近似一致的文本布局预测”，不是自带渲染器
@@ -37,10 +38,11 @@
 - `layout.test.ts` 与 `src/test-data.ts` 明确体现了“持久不变量测试”与“浏览器验证共享语料”分层
 - 页面层已经显式分成 broad sweep、benchmark baseline、long-form deep diagnostic、short probe 四类工具，不同页面承担不同精度/成本层级
 - 自动化层的协议面很小：`requestId + navigation phase + report(hash/POST)`；checker 保持薄，复杂诊断仍留在页面侧
+- [[CHECKLIST]] 现在按 Phase 0-6 稳定组织，且每个研究对象只出现一次；后续进度数字应以该清单为唯一统计口径
 
 ## 下一检查点
-1. 继续推进 C3：补读 `pages/demos/**/*`
-2. 推进 C4：补读 Gatsby checker 与更多 corpus/gatsby/benchmark 脚本
+1. 以清理后的 [[CHECKLIST]] 为准继续推进 Phase 3：补读 `pages/demos/**/*`
+2. 推进 Phase 4：补读 Gatsby checker 与更多 corpus/gatsby/benchmark 脚本
 3. 完成自动化脚本模块卡的第二轮细化
 4. 评估何时将 C3/C4 分别标记为完成
 
@@ -55,6 +57,7 @@
 | C2 阶段收口 | 1 | `docs: 完成核心引擎C2阶段研究` | 正常 | 转入 `pages/` 验证层 |
 | 页面验证层首轮 | 1 | `docs: 研究浏览器验证页面与诊断功能` | 正常 | 下一步补 `gatsby` / demos / scripts |
 | Gatsby 与自动化桥接 | 1 | `docs: 研究Gatsby诊断与自动化桥接` | 正常 | 下一步补 demos 与剩余 checker |
+| checklist 清理与校准 | 1 | `docs: 清理研究清单并校准进度统计` | 正常 | 之后按新的 Phase 清单继续推进 |
 
 ## 风险与阻塞
 - 当前最大的研究风险不是技术卡死，而是过早钻进 `src/analysis.ts` 的局部规则而忽略页面/脚本证据链；已通过 [[00-研究路线图与检查点]] 约束顺序
