@@ -33,17 +33,17 @@
 - [x] 研究 `src/test-data.ts`
 - [x] 研究 `src/text-modules.d.ts`
 
-## Phase 3. 页面层 `pages/` `7/10`
+## Phase 3. 页面层 `pages/` `10/10`
 - [x] 研究 `pages/accuracy.ts` / `pages/accuracy.html`
 - [x] 研究 `pages/benchmark.ts` / `pages/benchmark.html`
 - [x] 研究 `pages/corpus.ts` / `pages/corpus.html`
 - [x] 研究 `pages/probe.ts` / `pages/probe.html`
 - [x] 研究 `pages/gatsby.ts` / `pages/gatsby.html` / `pages/gatsby.txt`
 - [x] 研究 `pages/diagnostic-utils.ts` / `pages/report-utils.ts`
-- [ ] 研究 `pages/demos/**/*`
-- [ ] 研究 `pages/emoji-test.html`
-- [ ] 研究 `pages/justification-comparison.html`
-- [ ] 研究 `pages/assets/*`
+- [x] 研究 `pages/demos/**/*`
+- [x] 研究 `pages/emoji-test.html`
+- [x] 研究 `pages/justification-comparison.html`
+- [x] 研究 `pages/assets/*`
 
 ## Phase 4. 自动化与脚本层 `scripts/` / `shared/` `6/10`
 - [x] 研究 `scripts/browser-automation.ts`
@@ -77,7 +77,7 @@
 - [ ] 清点所有代码文件都已被某张卡片覆盖
 - [ ] 通过原子化 commit 持续推进到研究收束
 
-## 总体进度 `38/50`
-- 已完成：`38`
-- 未完成：`12`
-- 当前阶段重点：Phase 3 与 Phase 4
+## 总体进度 `41/50`
+- 已完成：`41`
+- 未完成：`9`
+- 当前阶段重点：Phase 4 与 Phase 5
