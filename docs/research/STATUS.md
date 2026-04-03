@@ -5,7 +5,7 @@
 - [x] C1 公共接口与开发面
 - [x] C2 核心引擎全链路
 - [x] C3 页面与 demo dogfooding
-- [ ] C4 自动化与快照治理
+- [x] C4 自动化与快照治理
 - [ ] C5 数据资产与研究沉淀
 - [ ] C6 最终综合总结
 
@@ -30,6 +30,10 @@
 18. 通读 `pages/demos/**/*`、`pages/emoji-test.html`、`pages/justification-comparison.html`、`pages/assets/*`
 19. 产出 [[模块-demo展示页面]]、[[功能-demo展示链]]、[[实现-demo投影循环与几何路由]]
 20. 完成 Phase 3 页面层研究并将 C3 标记为完成
+21. 通读 `scripts/gatsby-check.ts`、`scripts/gatsby-sweep.ts`、`scripts/corpus-sweep.ts`、`scripts/corpus-font-matrix.ts`、`scripts/corpus-taxonomy.ts`、`scripts/corpus-representative.ts`、`scripts/pre-wrap-check.ts`、`scripts/probe-check.ts`、`scripts/package-smoke-test.ts`、`scripts/build-demo-site.ts`
+22. 扩写 [[模块-自动化脚本]]，补齐批量 sweep、taxonomy、representative snapshot、发布验收脚本的职责
+23. 产出 [[功能-自动化批量sweep与发布验收]]、[[实现-checker编排与快照生成]]
+24. 完成 Phase 4 自动化与脚本层研究并将 C4 标记为完成
 
 ## 当前判断
 - Pretext 的产品中心是“浏览器近似一致的文本布局预测”，不是自带渲染器
@@ -44,12 +48,14 @@
 - [[CHECKLIST]] 现在按 Phase 0-6 稳定组织，且每个研究对象只出现一次；后续进度数字应以该清单为唯一统计口径
 - demo 层与验证页是两条不同证据链：前者证明“可做什么”，后者证明“为什么可信”
 - rich demo 的共通内核已经浮现出来：prepared cache、rAF 投影循环、slot carving、cursor handoff、projection diff / node pool
+- 脚本层现在也可以明确分成三档：单点细诊断、批量 sweep/快照生成、发布面验收
+- `corpus-taxonomy` 与 `corpus-representative` 说明研究脚本已经开始生产“可积累资产”，而不只是一次性 CLI 输出
 
 ## 下一检查点
-1. 继续推进 Phase 4：补读 Gatsby checker 与更多 corpus/gatsby/build/checker 脚本
-2. 完成自动化脚本模块卡的第二轮细化
-3. 评估何时将 C4 标记为完成
-4. 开始 Phase 5 的数据资产与语料快照研究
+1. 进入 Phase 5：研究 `accuracy/*.json`、`benchmarks/*.json`、`corpora/*`
+2. 把数据资产如何支撑 `STATUS.md` / `corpora/STATUS.md` 的证据链补成专题卡
+3. 继续 Phase 6：补专题卡与风险卡网络
+4. 评估研究网络的文件覆盖率与双链闭环情况
 
 ## Commit 追踪
 
@@ -64,6 +70,7 @@
 | Gatsby 与自动化桥接 | 1 | `docs: 研究Gatsby诊断与自动化桥接` | 正常 | 下一步补 demos 与剩余 checker |
 | checklist 清理与校准 | 1 | `docs: 清理研究清单并校准进度统计` | 正常 | 之后按新的 Phase 清单继续推进 |
 | demo dogfooding 页面 | 1 | `docs: 研究demo页面与dogfooding布局模式` | 正常 | 下一步转入 Phase 4 的 Gatsby/corpus/checker/build 脚本 |
+| 自动化批量脚本与发布验收 | 1 | `docs: 研究自动化批量脚本与发布验收` | 正常 | 下一步转入 Phase 5 数据资产与快照文件 |
 
 ## 风险与阻塞
 - 当前最大的研究风险不是技术卡死，而是过早钻进 `src/analysis.ts` 的局部规则而忽略页面/脚本证据链；已通过 [[00-研究路线图与检查点]] 约束顺序

@@ -45,17 +45,17 @@
 - [x] 研究 `pages/justification-comparison.html`
 - [x] 研究 `pages/assets/*`
 
-## Phase 4. 自动化与脚本层 `scripts/` / `shared/` `6/10`
+## Phase 4. 自动化与脚本层 `scripts/` / `shared/` `10/10`
 - [x] 研究 `scripts/browser-automation.ts`
 - [x] 研究 `scripts/report-server.ts`
 - [x] 研究 `scripts/accuracy-check.ts`
 - [x] 研究 `scripts/benchmark-check.ts`
 - [x] 研究 `scripts/corpus-check.ts`
 - [x] 研究 `shared/navigation-state.ts`
-- [ ] 研究 Gatsby 相关脚本：`scripts/gatsby-check.ts`、`scripts/gatsby-sweep.ts`
-- [ ] 研究 corpus 其余脚本：`scripts/corpus-sweep.ts`、`scripts/corpus-font-matrix.ts`、`scripts/corpus-taxonomy.ts`、`scripts/corpus-representative.ts`
-- [ ] 研究其余 checker：`scripts/pre-wrap-check.ts`、`scripts/probe-check.ts`
-- [ ] 研究构建/发布脚本：`scripts/package-smoke-test.ts`、`scripts/build-demo-site.ts`
+- [x] 研究 Gatsby 相关脚本：`scripts/gatsby-check.ts`、`scripts/gatsby-sweep.ts`
+- [x] 研究 corpus 其余脚本：`scripts/corpus-sweep.ts`、`scripts/corpus-font-matrix.ts`、`scripts/corpus-taxonomy.ts`、`scripts/corpus-representative.ts`
+- [x] 研究其余 checker：`scripts/pre-wrap-check.ts`、`scripts/probe-check.ts`
+- [x] 研究构建/发布脚本：`scripts/package-smoke-test.ts`、`scripts/build-demo-site.ts`
 
 ## Phase 5. 数据与研究素材 `0/8`
 - [ ] 研究 `accuracy/*.json`
@@ -77,7 +77,7 @@
 - [ ] 清点所有代码文件都已被某张卡片覆盖
 - [ ] 通过原子化 commit 持续推进到研究收束
 
-## 总体进度 `41/50`
-- 已完成：`41`
-- 未完成：`9`
-- 当前阶段重点：Phase 4 与 Phase 5
+## 总体进度 `45/50`
+- 已完成：`45`
+- 未完成：`5`
+- 当前阶段重点：Phase 5 与 Phase 6
