@@ -13,6 +13,7 @@ const entrypoints = [
   'pages/demos/masonry/index.html',
   'pages/demos/rich-note.html',
   'pages/demos/variable-typographic-ascii.html',
+  'pages/emoji-test.html',
 ]
 
 const result = Bun.spawnSync(
@@ -38,6 +39,7 @@ const targets = [
   { source: 'masonry/index.html', target: 'masonry/index.html' },
   { source: 'rich-note.html', target: 'rich-note/index.html' },
   { source: 'variable-typographic-ascii.html', target: 'variable-typographic-ascii/index.html' },
+  { source: 'emoji-test.html', target: 'emoji-test/index.html' },
 ]
 
 for (let index = 0; index < targets.length; index++) {
@@ -50,6 +52,7 @@ await rm(path.join(outdir, 'pages'), { recursive: true, force: true })
 async function resolveBuiltHtmlPath(relativePath: string): Promise<string> {
   const candidates = [
     path.join(outdir, relativePath),
+    path.join(outdir, 'pages', relativePath),
     path.join(outdir, 'pages', 'demos', relativePath),
   ]
   for (let index = 0; index < candidates.length; index++) {
@@ -85,5 +88,7 @@ function rebaseRelativeAssetUrls(html: string, sourcePath: string, targetPath: s
 
 function rewriteDemoLinksForStaticRoot(html: string, targetRelativePath: string): string {
   if (targetRelativePath !== 'index.html') return html
-  return html.replace(/\bhref="\/demos\/([^"/]+)"/g, (_match, slug: string) => `href="./${slug}"`)
+  return html
+    .replace(/\bhref="\/demos\/([^"/]+)"/g, (_match, slug: string) => `href="./${slug}"`)
+    .replace(/\bhref="\/emoji-test"/g, 'href="./emoji-test"')
 }

@@ -47,6 +47,8 @@
     "corpus-sweep": "bun run scripts/corpus-sweep.ts",
     "corpus-sweep:safari": "CORPUS_CHECK_BROWSER=safari bun run scripts/corpus-sweep.ts",
     "corpus-taxonomy": "bun run scripts/corpus-taxonomy.ts",
+    "emoji-check": "bun run scripts/emoji-check.ts",
+    "emoji-check:safari": "EMOJI_CHECK_BROWSER=safari bun run scripts/emoji-check.ts",
     "gatsby-check": "bun run scripts/gatsby-check.ts",
     "gatsby-check:safari": "GATSBY_CHECK_BROWSER=safari bun run scripts/gatsby-check.ts",
     "gatsby-sweep": "bun run scripts/gatsby-sweep.ts",

@@ -1,0 +1,130 @@
+import { type ChildProcess } from 'node:child_process'
+import { writeFileSync } from 'node:fs'
+import {
+  acquireBrowserAutomationLock,
+  createBrowserSession,
+  ensurePageServer,
+  getAvailablePort,
+  loadHashReport,
+  type BrowserKind,
+} from './browser-automation.ts'
+
+type EnvironmentFingerprint = {
+  userAgent: string
+  devicePixelRatio: number
+  viewport: {
+    innerWidth: number
+    innerHeight: number
+    outerWidth: number
+    outerHeight: number
+    visualViewportScale: number | null
+  }
+  screen: {
+    width: number
+    height: number
+    availWidth: number
+    availHeight: number
+    colorDepth: number
+    pixelDepth: number
+  }
+}
+
+type EmojiSizeSummary = {
+  size: number
+  mismatchedEmojiCount: number
+  correctionDiffs: number[]
+  constantAcrossFonts: boolean
+  maxVariance: number
+  worstEmoji: string | null
+}
+
+type EmojiReport = {
+  status: 'ready' | 'error'
+  requestId?: string
+  environment?: EnvironmentFingerprint
+  emojiCount?: number
+  fontCount?: number
+  sizeSummaries?: EmojiSizeSummary[]
+  constantAcrossAllSizes?: boolean
+  fontIndependentSizes?: number[]
+  variableSizes?: number[]
+  message?: string
+}
+
+function parseStringFlag(name: string): string | null {
+  const prefix = `--${name}=`
+  const arg = process.argv.find(value => value.startsWith(prefix))
+  return arg === undefined ? null : arg.slice(prefix.length)
+}
+
+function parseBrowser(value: string | null): BrowserKind {
+  const browser = (value ?? process.env['EMOJI_CHECK_BROWSER'] ?? 'chrome').toLowerCase()
+  if (browser !== 'chrome' && browser !== 'safari') {
+    throw new Error(`Unsupported browser ${browser}; expected chrome or safari`)
+  }
+  return browser
+}
+
+function printReport(report: EmojiReport): void {
+  if (report.status === 'error') {
+    console.log(`error: ${report.message ?? 'unknown error'}`)
+    return
+  }
+
+  console.log(
+    `emoji ${report.emojiCount ?? '?'} | fonts ${report.fontCount ?? '?'} | ` +
+    `constant-all-sizes ${report.constantAcrossAllSizes ? 'yes' : 'no'}`,
+  )
+  if (report.environment !== undefined) {
+    const env = report.environment
+    console.log(
+      `env: dpr ${env.devicePixelRatio} | viewport ${env.viewport.innerWidth}x${env.viewport.innerHeight} | ` +
+      `outer ${env.viewport.outerWidth}x${env.viewport.outerHeight}`,
+    )
+  }
+
+  for (const summary of report.sizeSummaries ?? []) {
+    const diffs = summary.correctionDiffs.length === 0
+      ? 'none'
+      : summary.correctionDiffs.map(diff => `${diff > 0 ? '+' : ''}${diff.toFixed(2)}`).join(', ')
+    console.log(
+      `${summary.size}px | mismatch ${summary.mismatchedEmojiCount} | ` +
+      `${summary.constantAcrossFonts ? 'constant' : `varies ${summary.maxVariance.toFixed(2)}px`} | ` +
+      `correction ${diffs}` +
+      (summary.worstEmoji === null ? '' : ` | worst ${summary.worstEmoji}`),
+    )
+  }
+}
+
+const browser = parseBrowser(parseStringFlag('browser'))
+const requestedPortRaw = parseStringFlag('port')
+const requestedPort = requestedPortRaw === null ? null : Number.parseInt(requestedPortRaw, 10)
+const output = parseStringFlag('output')
+const timeoutMs = Number.parseInt(process.env['EMOJI_CHECK_TIMEOUT_MS'] ?? '60000', 10)
+
+let serverProcess: ChildProcess | null = null
+const lock = await acquireBrowserAutomationLock(browser)
+const session = createBrowserSession(browser)
+
+try {
+  const port = await getAvailablePort(requestedPort)
+  const pageServer = await ensurePageServer(port, '/emoji-test', process.cwd())
+  serverProcess = pageServer.process
+  const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const url = `${pageServer.baseUrl}/emoji-test?report=1&requestId=${encodeURIComponent(requestId)}`
+  const report = await loadHashReport<EmojiReport>(session, url, requestId, browser, timeoutMs)
+  printReport(report)
+
+  if (output !== null) {
+    writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
+    console.log(`wrote ${output}`)
+  }
+
+  if (report.status === 'error') {
+    process.exitCode = 1
+  }
+} finally {
+  session.close()
+  serverProcess?.kill('SIGTERM')
+  lock.release()
+}

@@ -118,4 +118,4 @@
 
 ### 风险点
 - `editorial-engine.ts` 与 `dynamic-layout.ts` 已经接近“小型应用”，后续若继续扩展，可能需要把共享投影/几何层再抽薄
-- `emoji-test.html` 仍是研究工具，不在正式自动化链路里；它产生结论，但不自动守护这些结论
+- `emoji-test.html` 已经接上 hash report 与 `emoji-check`，但仍不是 accuracy/corpus 那种正式快照 gate；它目前更像“半正式探针”，适合持续核对 correction 假设，不适合承载大体量历史快照

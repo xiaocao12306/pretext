@@ -20,7 +20,9 @@
 <h1>Emoji Width: Canvas vs DOM — Multi-Font Sweep</h1>
 <p class="sub">Tests whether emoji canvas/DOM diff is constant across fonts (font-independent) or varies per font.</p>
 <div id="output">Running...</div>
-<script>
+<script type="module">
+import { clearNavigationReport, publishNavigationPhase, publishNavigationReport } from './report-utils.ts'
+
 const emoji = [
   // Basic smileys
   '\u{1F600}','\u{1F602}','\u{1F972}','\u{1F60D}','\u{1F914}','\u{1F634}','\u{1F92F}','\u{1F973}',
@@ -56,8 +58,18 @@ const fonts = [
 
 const sizes = [10, 12, 14, 15, 16, 18, 20, 22, 24, 28, 32];
 
-const canvas = new OffscreenCanvas(1, 1);
-const ctx = canvas.getContext('2d');
+const params = new URLSearchParams(location.search);
+const requestId = params.get('requestId') ?? undefined;
+const reportRequested = params.get('report') === '1';
+const outputNode = document.getElementById('output');
+if (!(outputNode instanceof HTMLDivElement)) throw new Error('#output not found');
+
+if (reportRequested) {
+  clearNavigationReport();
+  publishNavigationPhase('loading', requestId);
+}
+
+const ctx = createMeasureContext();
 
 const container = document.createElement('div');
 container.style.cssText = 'position:absolute;top:-9999px;visibility:hidden;white-space:nowrap';
@@ -66,9 +78,13 @@ document.body.appendChild(container);
 // Collect all data: diffsBySize[size] = Map<diffValue, count across all fonts>
 // Also track per-font to see if there's variance
 const diffsBySizeFont = new Map(); // size → Map<font, diff[]>
-const allDiffs = [];
+const sizeSummaries = [];
 
 let out = '';
+
+if (reportRequested) {
+  publishNavigationPhase('measuring', requestId);
+}
 
 for (const fontFamily of fonts) {
   out += `<span class="heading">${fontFamily}</span>\n`;
@@ -98,7 +114,6 @@ for (const fontFamily of fonts) {
       if (Math.abs(diff) >= 0.5) {
         mismatches++;
         diffs.push({ emoji: emoji[i], canvasW, domW, diff });
-        allDiffs.push({ font: fontFamily, size: sz, emoji: emoji[i], canvasW, domW, diff });
       }
 
       // Track per size+font
@@ -157,6 +172,12 @@ for (const sz of sizes) {
   }
 
   const cls = allSame ? 'match' : 'mismatch';
+  const firstFont = fonts[0];
+  const firstFontEntries = fontMap.get(firstFont) || [];
+  const mismatchDiffs = firstFontEntries
+    .filter(entry => Math.abs(entry.diff) >= 0.5)
+    .map(entry => entry.diff);
+  const uniqueCorrectionDiffs = [...new Set(mismatchDiffs.map(diff => Number(diff.toFixed(2))))];
   const sampleDiffs = [];
   for (const [e, fontDiffs] of emojiDiffsByFont) {
     const vals = [...fontDiffs.values()];
@@ -171,6 +192,15 @@ for (const sz of sizes) {
     out += `  <span class="dim">${sampleDiffs.join(', ')}</span>`;
   }
   out += '\n';
+
+  sizeSummaries.push({
+    size: sz,
+    mismatchedEmojiCount: mismatchDiffs.length,
+    correctionDiffs: uniqueCorrectionDiffs,
+    constantAcrossFonts: allSame,
+    maxVariance: Number(maxVariance.toFixed(2)),
+    worstEmoji: worstEmoji || null,
+  });
 }
 
 // === Summary table: size → diff value (if constant) ===
@@ -213,8 +243,62 @@ if (sz16) {
   out += `  Matched (${matched.length}): ${matched.join(' ')}\n`;
 }
 
+const report = withRequestId({
+  status: 'ready',
+  environment: getEnvironmentFingerprint(),
+  emojiCount: emoji.length,
+  fontCount: fonts.length,
+  sizeSummaries,
+  constantAcrossAllSizes: sizeSummaries.every(summary => summary.constantAcrossFonts),
+  fontIndependentSizes: sizeSummaries.filter(summary => summary.constantAcrossFonts).map(summary => summary.size),
+  variableSizes: sizeSummaries.filter(summary => !summary.constantAcrossFonts).map(summary => summary.size),
+});
+
 document.body.removeChild(container);
-document.getElementById('output').innerHTML = out;
+outputNode.innerHTML = out;
+
+if (reportRequested) {
+  publishNavigationReport(report);
+}
+
+function createMeasureContext() {
+  if (typeof OffscreenCanvas === 'function') {
+    const offscreen = new OffscreenCanvas(1, 1);
+    const offscreenCtx = offscreen.getContext('2d');
+    if (offscreenCtx !== null) return offscreenCtx;
+  }
+
+  const canvas = document.createElement('canvas');
+  const canvasCtx = canvas.getContext('2d');
+  if (canvasCtx === null) throw new Error('2d context unavailable');
+  return canvasCtx;
+}
+
+function withRequestId(report) {
+  return requestId === undefined ? report : { ...report, requestId };
+}
+
+function getEnvironmentFingerprint() {
+  return {
+    userAgent: navigator.userAgent,
+    devicePixelRatio: window.devicePixelRatio,
+    viewport: {
+      innerWidth: window.innerWidth,
+      innerHeight: window.innerHeight,
+      outerWidth: window.outerWidth,
+      outerHeight: window.outerHeight,
+      visualViewportScale: window.visualViewport?.scale ?? null,
+    },
+    screen: {
+      width: window.screen.width,
+      height: window.screen.height,
+      availWidth: window.screen.availWidth,
+      availHeight: window.screen.availHeight,
+      colorDepth: window.screen.colorDepth,
+      pixelDepth: window.screen.pixelDepth,
+    },
+  };
+}
 </script>
 </body>
 </html>

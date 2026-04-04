@@ -24,6 +24,7 @@ bun run corpus-sweep         # coarse corpus width sweep
 bun run corpus-font-matrix   # same corpus under alternate fonts
 bun run corpus-taxonomy      # classify a corpus mismatch field into steering buckets
 bun run corpus-representative
+bun run emoji-check          # emoji canvas-vs-DOM correction probe
 bun run gatsby-check         # slow detailed Gatsby diagnosis
 bun run gatsby-sweep         # coarse Gatsby width sweep
 ```
@@ -39,6 +40,7 @@ Useful pages:
 - `/demos/bubbles`
 - `/demos/dynamic-layout`
 - `/demos/justification-comparison`
+- `/emoji-test`
 - `/accuracy`
 - `/benchmark`
 - `/corpus`
