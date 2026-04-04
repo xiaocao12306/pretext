@@ -9,7 +9,7 @@
 - `pages/demos/justification-comparison.ui.ts`
 
 上游：[[模块-demo展示页面]]
-下游：[[专题-研究型demo与engine假设外显]]
+下游：[[实现-justification-demo报告与checker链]]、[[专题-研究型demo与engine假设外显]]
 
 ## 功能定位
 这张 demo 的核心不是“展示三栏排版”，而是把三种段落算法放到同一份文本、同一宽度、同一指标体系下直接比较：
@@ -55,6 +55,14 @@
 
 因此它不是纯视觉 demo，而是“段落质量实验台”。
 
+## 新增的探针能力
+这页现在不再只是人工拖 slider 的视觉实验页，也能作为可脚本消费的摘要探针：
+- `/demos/justification-comparison?report=1&width=...&showIndicators=0&requestId=...`
+- 页面会回传三栏 metrics、列间 delta、`bestColumns`
+- 同时把 CSS overlay 实测到的 `riverMarkCount` 单独带回
+
+这使它从“肉眼看 river”前进到了“可以批量回收同一组段落质量摘要”。
+
 ## 与主库的关系
 - 主库本身没有公开 Knuth-Plass API
 - 但 demo 证明：
@@ -67,4 +75,5 @@
 
 ## 当前判断
 - `pages/justification-comparison.html` 顶层只是 redirect，真正有价值的是 `/demos/justification-comparison` 里的算法对比与指标面
+- 它现在还多了一层半正式探针能力：不是 accuracy gate，但已经能被 `justification-check` 拉取摘要
 - 这张页面最重要的不是 Knuth-Plass 名字本身，而是它证明了“Pretext 能做段落实验平台，而不只是浏览器结果复刻器”

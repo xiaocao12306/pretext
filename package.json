@@ -53,6 +53,8 @@
     "gatsby-check:safari": "GATSBY_CHECK_BROWSER=safari bun run scripts/gatsby-check.ts",
     "gatsby-sweep": "bun run scripts/gatsby-sweep.ts",
     "gatsby-sweep:safari": "GATSBY_CHECK_BROWSER=safari bun run scripts/gatsby-sweep.ts",
+    "justification-check": "bun run scripts/justification-check.ts",
+    "justification-check:safari": "JUSTIFICATION_CHECK_BROWSER=safari bun run scripts/justification-check.ts",
     "package-smoke-test": "bun run scripts/package-smoke-test.ts",
     "prepack": "rm -rf dist && tsc -p tsconfig.build.json",
     "pre-wrap-check": "bun run scripts/pre-wrap-check.ts",

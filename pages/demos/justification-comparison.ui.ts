@@ -40,6 +40,14 @@ export type DomCache = {
   }
 }
 
+export type CssOverlaySummary = {
+  riverMarkCount: number
+}
+
+type SyncCssRiverOverlayOptions = {
+  measureWhenHidden?: boolean
+}
+
 export function createDomCache(): DomCache {
   const slider = getInputElement('widthSlider')
   const showIndicators = getInputElement('showIndicators')
@@ -91,10 +99,11 @@ export function syncCssRiverOverlay(
   dom: DomCache,
   controls: DemoControls,
   normalSpaceWidth: number,
-): void {
-  if (!controls.showIndicators) {
+  options: SyncCssRiverOverlayOptions = {},
+): CssOverlaySummary {
+  if (!controls.showIndicators && !options.measureWhenHidden) {
     hideUnusedRiverMarks(dom.cssRiverMarks, 0)
-    return
+    return { riverMarkCount: 0 }
   }
 
   const overlayRect = dom.cssCol.getBoundingClientRect()
@@ -136,6 +145,11 @@ export function syncCssRiverOverlay(
     }
   }
 
+  if (!controls.showIndicators) {
+    hideUnusedRiverMarks(dom.cssRiverMarks, 0)
+    return { riverMarkCount: riverMarks.length }
+  }
+
   ensureRiverMarkCount(dom.cssRiverMarks, dom.cssRiverOverlay, riverMarks.length)
   for (let index = 0; index < riverMarks.length; index++) {
     const mark = dom.cssRiverMarks[index]!
@@ -147,6 +161,7 @@ export function syncCssRiverOverlay(
     mark.style.background = riverMark.color
   }
   hideUnusedRiverMarks(dom.cssRiverMarks, riverMarks.length)
+  return { riverMarkCount: riverMarks.length }
 }
 
 function getHtmlElement(id: string): HTMLElement {

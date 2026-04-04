@@ -27,6 +27,7 @@ bun run corpus-representative
 bun run emoji-check          # emoji canvas-vs-DOM correction probe
 bun run gatsby-check         # slow detailed Gatsby diagnosis
 bun run gatsby-sweep         # coarse Gatsby width sweep
+bun run justification-check  # justification demo summary probe
 ```
 
 Packaging notes:

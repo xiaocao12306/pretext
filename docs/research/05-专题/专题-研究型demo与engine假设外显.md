@@ -1,6 +1,6 @@
 # 专题：研究型 demo 与 engine 假设外显
 
-相关节点：[[模块-demo展示页面]]、[[功能-段落算法对比与river可视化]]、[[功能-emoji校正探针与自动化校验]]、[[实现-SVG资产到wrap-hull投影]]、[[实现-emoji-test报告与checker链]]
+相关节点：[[模块-demo展示页面]]、[[功能-段落算法对比与river可视化]]、[[功能-emoji校正探针与自动化校验]]、[[实现-SVG资产到wrap-hull投影]]、[[实现-emoji-test报告与checker链]]、[[实现-justification-demo报告与checker链]]
 
 ## 主题结论
 Pretext 的 demo 里有一类页面不是“产品效果展示”，而是把核心引擎里的假设直接外显出来，变成可以观察、比较、质疑的研究台。
@@ -24,6 +24,12 @@ Pretext 的 demo 里有一类页面不是“产品效果展示”，而是把核
 - 同屏可比较
 
 因此它让“用户态段落算法实验”从抽象想法变成了可验证假设。
+
+而这次再往前走了一步：
+- `justification-comparison` 现在也能吐出摘要 report
+- 可以被 `justification-check` 在几个典型宽度上批量回收
+
+所以它开始具备“研究页到半正式探针”的过渡形态。
 
 ## 2. `emoji-test.html` 外显的是 measurement 层假设
 
