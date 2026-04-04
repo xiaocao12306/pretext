@@ -6,7 +6,7 @@
 - [x] C2 核心引擎全链路
 - [x] C3 页面与 demo dogfooding
 - [x] C4 自动化与快照治理
-- [ ] C5 数据资产与研究沉淀
+- [x] C5 数据资产与研究沉淀
 - [ ] C6 最终综合总结
 
 ## 本轮完成
@@ -34,6 +34,9 @@
 22. 扩写 [[模块-自动化脚本]]，补齐批量 sweep、taxonomy、representative snapshot、发布验收脚本的职责
 23. 产出 [[功能-自动化批量sweep与发布验收]]、[[实现-checker编排与快照生成]]
 24. 完成 Phase 4 自动化与脚本层研究并将 C4 标记为完成
+25. 通读 `accuracy/*.json`、`benchmarks/*.json`、`corpora/README.md`、`corpora/STATUS.md`、`corpora/TAXONOMY.md`、`corpora/representative.json`、`corpora/sources.json` 与 `corpora/*.txt` 的资产角色
+26. 产出 [[模块-语料与快照资产]]、[[功能-快照与canary治理]]、[[实现-快照文件结构与状态页映射]]
+27. 产出 [[专题-快照与canary证据链]] 并完成 Phase 5 数据资产研究，将 C5 标记为完成
 
 ## 当前判断
 - Pretext 的产品中心是“浏览器近似一致的文本布局预测”，不是自带渲染器
@@ -50,12 +53,14 @@
 - rich demo 的共通内核已经浮现出来：prepared cache、rAF 投影循环、slot carving、cursor handoff、projection diff / node pool
 - 脚本层现在也可以明确分成三档：单点细诊断、批量 sweep/快照生成、发布面验收
 - `corpus-taxonomy` 与 `corpus-representative` 说明研究脚本已经开始生产“可积累资产”，而不只是一次性 CLI 输出
+- 数据资产层已经能明确拆成 raw snapshot、representative anchor、compact dashboard、taxonomy vocabulary 四层
+- `sources.json` 是 corpus 的 canonical registry，不只是文件目录；`pages/assets/*` 也应被视为布局输入资产而非纯装饰资源
 
 ## 下一检查点
-1. 进入 Phase 5：研究 `accuracy/*.json`、`benchmarks/*.json`、`corpora/*`
-2. 把数据资产如何支撑 `STATUS.md` / `corpora/STATUS.md` 的证据链补成专题卡
-3. 继续 Phase 6：补专题卡与风险卡网络
-4. 评估研究网络的文件覆盖率与双链闭环情况
+1. 推进 Phase 6：继续补专题卡与风险卡网络
+2. 评估总览 → 模块 → 功能 → 实现 的双链闭环缺口
+3. 清点哪些代码文件仍未被具体卡片覆盖
+4. 为最终综合总结准备残余未决问题清单
 
 ## Commit 追踪
 
@@ -71,6 +76,7 @@
 | checklist 清理与校准 | 1 | `docs: 清理研究清单并校准进度统计` | 正常 | 之后按新的 Phase 清单继续推进 |
 | demo dogfooding 页面 | 1 | `docs: 研究demo页面与dogfooding布局模式` | 正常 | 下一步转入 Phase 4 的 Gatsby/corpus/checker/build 脚本 |
 | 自动化批量脚本与发布验收 | 1 | `docs: 研究自动化批量脚本与发布验收` | 正常 | 下一步转入 Phase 5 数据资产与快照文件 |
+| 数据资产与快照证据链 | 1 | `docs: 研究数据资产与快照证据链` | 正常 | 下一步转入 Phase 6 专题卡与风险卡网络 |
 
 ## 风险与阻塞
 - 当前最大的研究风险不是技术卡死，而是过早钻进 `src/analysis.ts` 的局部规则而忽略页面/脚本证据链；已通过 [[00-研究路线图与检查点]] 约束顺序

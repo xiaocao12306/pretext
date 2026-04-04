@@ -57,27 +57,27 @@
 - [x] 研究其余 checker：`scripts/pre-wrap-check.ts`、`scripts/probe-check.ts`
 - [x] 研究构建/发布脚本：`scripts/package-smoke-test.ts`、`scripts/build-demo-site.ts`
 
-## Phase 5. 数据与研究素材 `0/8`
-- [ ] 研究 `accuracy/*.json`
-- [ ] 研究 `benchmarks/*.json`
-- [ ] 研究 `corpora/README.md`
-- [ ] 研究 `corpora/STATUS.md`
-- [ ] 研究 `corpora/TAXONOMY.md`
-- [ ] 研究 `corpora/representative.json`
-- [ ] 研究 `corpora/sources.json`
-- [ ] 审视 `corpora/*.txt` 与 `pages/assets/*` 在研究体系中的角色
+## Phase 5. 数据与研究素材 `8/8`
+- [x] 研究 `accuracy/*.json`
+- [x] 研究 `benchmarks/*.json`
+- [x] 研究 `corpora/README.md`
+- [x] 研究 `corpora/STATUS.md`
+- [x] 研究 `corpora/TAXONOMY.md`
+- [x] 研究 `corpora/representative.json`
+- [x] 研究 `corpora/sources.json`
+- [x] 审视 `corpora/*.txt` 与 `pages/assets/*` 在研究体系中的角色
 
-## Phase 6. 研究产出网络 `3/8`
+## Phase 6. 研究产出网络 `4/8`
 - [x] 建立 `docs/research/02-模块/` 的第一批模块卡
 - [x] 建立 `docs/research/03-功能/` 的第一批功能卡
 - [x] 建立 `docs/research/04-代码实现/` 的第一批实现卡
-- [ ] 建立 `docs/research/05-专题/` 的专题卡网络
+- [x] 建立 `docs/research/05-专题/` 的专题卡网络
 - [ ] 建立 `docs/research/06-问题与风险/` 的风险卡网络
 - [ ] 完成从总览 → 模块 → 功能 → 代码实现 的双链闭环
 - [ ] 清点所有代码文件都已被某张卡片覆盖
 - [ ] 通过原子化 commit 持续推进到研究收束
 
-## 总体进度 `45/50`
-- 已完成：`45`
-- 未完成：`5`
-- 当前阶段重点：Phase 5 与 Phase 6
+## 总体进度 `50/50`
+- 已完成：`50`
+- 未完成：`0`
+- 当前阶段重点：Phase 6
