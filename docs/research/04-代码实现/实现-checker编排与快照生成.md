@@ -152,7 +152,7 @@
 
 后半段还有两层静态重写：
 - `rebaseRelativeAssetUrls()`：在 HTML 被挪到 `slug/index.html` 后，重新计算资源相对路径
-- `rewriteDemoLinksForStaticRoot()`：把 landing page 里的 `/demos/...` 链接改成静态根目录下的相对链接
+- `rewriteDemoLinksForStaticRoot()`：把 landing page 里的 `/demos/...` 和 root alias 链接改成静态根目录下的相对链接，并保留 query/hash
 
 这说明 demo-site 发布的问题不在 bundle 本身，而在“静态托管目录结构变了以后，HTML 引用关系是否仍正确”。
 

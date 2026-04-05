@@ -89,6 +89,6 @@ function rebaseRelativeAssetUrls(html: string, sourcePath: string, targetPath: s
 function rewriteDemoLinksForStaticRoot(html: string, targetRelativePath: string): string {
   if (targetRelativePath !== 'index.html') return html
   return html
-    .replace(/\bhref="\/demos\/([^"/]+)"/g, (_match, slug: string) => `href="./${slug}"`)
-    .replace(/\bhref="\/emoji-test"/g, 'href="./emoji-test"')
+    .replace(/\bhref="\/demos\/([^"?#\/]+)([^"]*)"/g, (_match, slug: string, suffix: string) => `href="./${slug}${suffix}"`)
+    .replace(/\bhref="\/(editorial-engine|justification-comparison|emoji-test)([^"]*)"/g, (_match, slug: string, suffix: string) => `href="./${slug}${suffix}"`)
 }

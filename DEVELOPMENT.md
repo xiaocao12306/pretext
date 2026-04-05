@@ -45,6 +45,7 @@ Useful pages:
 - `/demos/bubbles`
 - `/demos/dynamic-layout`
 - `/demos/editorial-engine`
+- `/editorial-engine`
 - `/demos/justification-comparison`
 - `/emoji-test`
 - `/accuracy`

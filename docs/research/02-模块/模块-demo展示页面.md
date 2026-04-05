@@ -26,6 +26,7 @@
 - `pages/demos/masonry/index.ts`
 - `pages/demos/masonry/shower-thoughts.json`
 - `pages/emoji-test.html`
+- `pages/editorial-engine.html`
 - `pages/justification-comparison.html`
 - `pages/assets/openai-symbol.svg`
 - `pages/assets/claude-symbol.svg`
@@ -48,6 +49,7 @@
 ### 1. Demo 入口与兼容别名
 - `pages/demos/index.html` 是静态 landing page，按能力类型组织 demo 卡片。
 - `pages/justification-comparison.html` 只是一个顶层 redirect，真正内容在 `/demos/justification-comparison`。
+- `pages/editorial-engine.html` 现在也补上了同类 root alias，把 `/editorial-engine` 收束到 `/demos/editorial-engine`，并保留 query/hash。
 
 这说明仓库已经把 demo 视为独立展示面，而不再是零散的试验页面。
 

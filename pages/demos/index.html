@@ -75,6 +75,45 @@
     line-height: 1.5;
     color: var(--muted);
   }
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 10%, white 90%);
+    color: color-mix(in srgb, var(--accent) 88%, black 12%);
+    font: 600 11px/1 "SF Mono", ui-monospace, monospace;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .action {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--rule) 78%);
+    background: color-mix(in srgb, var(--panel) 88%, white 12%);
+    color: inherit;
+    text-decoration: none;
+    font: 600 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+  }
+  .action:hover {
+    border-color: color-mix(in srgb, var(--accent) 46%, var(--rule) 54%);
+  }
   @media (max-width: 760px) {
     .page {
       width: min(100vw - 20px, 940px);
@@ -107,25 +146,52 @@
         <p>Tight multiline message bubbles that keep the same line count with less wasted area.</p>
       </a>
 
-      <a class="card" href="/demos/dynamic-layout">
+      <article class="card">
         <h2>Dynamic Layout</h2>
         <p>A fixed-height editorial spread with obstacle-aware title routing and continuous flow.</p>
-      </a>
+        <div class="tags">
+          <span class="tag">asset wrap</span>
+          <span class="tag">probe-ready</span>
+        </div>
+        <div class="actions">
+          <a class="action" href="/demos/dynamic-layout">Live demo</a>
+          <a class="action" href="/demos/dynamic-layout?pageWidth=1365&amp;pageHeight=900&amp;showDiagnostics=1">Spread probe</a>
+          <a class="action" href="/demos/dynamic-layout?pageWidth=700&amp;pageHeight=900&amp;showDiagnostics=1">Narrow probe</a>
+        </div>
+      </article>
 
       <a class="card" href="/demos/variable-typographic-ascii">
         <h2>Variable Typographic ASCII</h2>
         <p>Particle-driven ASCII art comparing proportional measured glyphs against a monospace version.</p>
       </a>
 
-      <a class="card" href="/demos/editorial-engine">
+      <article class="card">
         <h2>Editorial Engine</h2>
         <p>Animated orbs, live text reflow, pull quotes, and multi-column flow with zero DOM measurements.</p>
-      </a>
+        <div class="tags">
+          <span class="tag">interactive</span>
+          <span class="tag">probe-ready</span>
+        </div>
+        <div class="actions">
+          <a class="action" href="/editorial-engine">Live demo</a>
+          <a class="action" href="/editorial-engine?pageWidth=1365&amp;pageHeight=900&amp;orbPreset=stacked&amp;animate=0&amp;showDiagnostics=1">Stacked probe</a>
+          <a class="action" href="/editorial-engine?pageWidth=640&amp;pageHeight=900&amp;orbPreset=corridor&amp;animate=0&amp;showDiagnostics=1">Narrow probe</a>
+        </div>
+      </article>
 
-      <a class="card" href="/demos/justification-comparison">
+      <article class="card">
         <h2>Justification Comparison</h2>
         <p>CSS justification, greedy hyphenation, and Knuth-Plass paragraph layout shown side by side to reveal rivers and spacing tradeoffs.</p>
-      </a>
+        <div class="tags">
+          <span class="tag">paragraph</span>
+          <span class="tag">probe-ready</span>
+        </div>
+        <div class="actions">
+          <a class="action" href="/justification-comparison">Live demo</a>
+          <a class="action" href="/justification-comparison?width=364&amp;showIndicators=0">Probe width 364</a>
+          <a class="action" href="/justification-comparison?width=520&amp;showIndicators=0">Probe width 520</a>
+        </div>
+      </article>
 
       <a class="card" href="/demos/rich-note">
         <h2>Rich Text</h2>
@@ -137,10 +203,19 @@
         <p>A text-card occlusion demo where height prediction comes from Pretext instead of DOM reads.</p>
       </a>
 
-      <a class="card" href="/emoji-test">
+      <article class="card">
         <h2>Emoji Width Probe</h2>
         <p>A browser probe for canvas-versus-DOM emoji width drift, summarized by size and font-independence.</p>
-      </a>
+        <div class="tags">
+          <span class="tag">measurement</span>
+          <span class="tag">probe-ready</span>
+        </div>
+        <div class="actions">
+          <a class="action" href="/emoji-test">Default sweep</a>
+          <a class="action" href="/emoji-test?sizes=12,16,24,32&amp;threshold=0.5">Tight threshold</a>
+          <a class="action" href="/emoji-test?sizes=10,14,18,24,32&amp;threshold=1">Coarse sweep</a>
+        </div>
+      </article>
     </section>
   </main>
 </body>
