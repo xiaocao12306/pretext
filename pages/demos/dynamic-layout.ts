@@ -228,6 +228,8 @@ const preparedByKey = new Map<string, PreparedTextWithSegments>()
 const params = new URLSearchParams(location.search)
 const requestId = params.get('requestId') ?? undefined
 const reportRequested = params.get('report') === '1'
+const pageWidthOverride = parseDimensionParam(params.get('pageWidth'))
+const pageHeightOverride = parseDimensionParam(params.get('pageHeight'))
 const scheduled = { value: false }
 const events: { mousemove: MouseEvent | null; click: MouseEvent | null; blur: boolean } = {
   mousemove: null,
@@ -902,8 +904,8 @@ function evaluateLayout(
 function commitFrame(now: number): boolean {
   const { font, lineHeight } = getTypography()
   const root = document.documentElement
-  const pageWidth = root.clientWidth
-  const pageHeight = root.clientHeight
+  const pageWidth = pageWidthOverride ?? root.clientWidth
+  const pageHeight = pageHeightOverride ?? root.clientHeight
   const animating = updateSpinState(now)
   const layout = buildLayout(pageWidth, pageHeight, lineHeight)
   const { headlineLines, creditLeft, creditTop, leftLines, rightLines, contentHeight, hits, bodyCursor } = evaluateLayout(layout, lineHeight, preparedBody)
@@ -1069,6 +1071,13 @@ function parseAngleParam(raw: string | null): number {
   if (raw === null) return 0
   const parsed = Number.parseFloat(raw)
   if (!Number.isFinite(parsed)) return 0
+  return parsed
+}
+
+function parseDimensionParam(raw: string | null): number | null {
+  if (raw === null) return null
+  const parsed = Number.parseInt(raw, 10)
+  if (!Number.isFinite(parsed) || parsed <= 0) return null
   return parsed
 }
 

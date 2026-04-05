@@ -20,10 +20,17 @@
 `pages/demos/dynamic-layout.ts` 现在接受：
 - `report=1`
 - `requestId=...`
+- `pageWidth=...`
+- `pageHeight=...`
 - `openaiAngle=...`
 - `claudeAngle=...`
 
-这让自动化脚本第一次能稳定要求这张页“在某个 logo 角度下启动并汇报状态”，而不是只能人工点击旋转。
+这让自动化脚本第一次能稳定要求这张页：
+- 在某个页面宽高下启动
+- 在某个 logo 角度下启动
+- 然后再汇报状态
+
+而不是只能吃当前浏览器 viewport 或靠人工点击旋转。
 
 ## 2. report 的重点不是像素，而是流式布局是否还成立
 页面回传的摘要集中在三类信号：
@@ -85,6 +92,17 @@
 同时这次继续受益于前一轮对 `ensurePageServer()` 的扩面：
 - 临时 Bun 服务器已经能直接暴露 `pages/demos/*.html`
 - 所以 checker 可以直接打 `/demos/dynamic-layout`
+
+而且它已经不只会拉“当前窗口”：
+- 支持 `--scenarios=1365x900,700x900,...`
+- 页面侧再用 `pageWidth/pageHeight` 明确吃进这些场景
+
+这样脚本就能稳定区分：
+- 双栏 spread
+- 窄屏单栏
+- 低高度截断
+
+而不必依赖浏览器外部窗口管理能力。
 
 ## 当前判断
 - `dynamic-layout` 现在和 `emoji-test`、`justification-comparison` 一样，进入了“研究页到半正式探针”的过渡带

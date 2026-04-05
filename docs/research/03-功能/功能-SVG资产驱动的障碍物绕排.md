@@ -59,6 +59,7 @@ Pretext 在这条能力链里扮演的角色不是读 SVG，而是：
 
 它已经支持：
 - `/demos/dynamic-layout?report=1&requestId=...`
+- `pageWidth` / `pageHeight`
 - 可选 `openaiAngle` / `claudeAngle`
 - 回传页面尺寸、headline/body line counts、两栏 handoff 是否吃完整段文本、logo hull 点数与当前角度
 
