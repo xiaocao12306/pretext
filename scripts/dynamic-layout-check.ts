@@ -33,6 +33,30 @@ type DynamicLayoutReport = {
     remainingSegmentIndex: number
     remainingGraphemeIndex: number
   }
+  routing?: {
+    creditSlotCount: number
+    creditSelectedSlotWidth: number | null
+    left: {
+      bandCount: number
+      blockedBandCount: number
+      skippedBandCount: number
+      candidateSlotCount: number
+      chosenSlotCount: number
+      minChosenSlotWidth: number | null
+      maxChosenSlotWidth: number | null
+      avgChosenSlotWidth: number | null
+    }
+    right: {
+      bandCount: number
+      blockedBandCount: number
+      skippedBandCount: number
+      candidateSlotCount: number
+      chosenSlotCount: number
+      minChosenSlotWidth: number | null
+      maxChosenSlotWidth: number | null
+      avgChosenSlotWidth: number | null
+    }
+  }
   logos?: {
     openai: {
       angle: number
@@ -131,8 +155,9 @@ function printReport(report: DynamicLayoutReport, scenario: Scenario, anglePair:
   const page = report.page
   const headline = report.headline
   const body = report.body
+  const routing = report.routing
   const logos = report.logos
-  if (page === undefined || headline === undefined || body === undefined || logos === undefined) {
+  if (page === undefined || headline === undefined || body === undefined || routing === undefined || logos === undefined) {
     console.log(`${scenario.width}x${scenario.height} @ ${anglePair.openaiAngle}:${anglePair.claudeAngle} | error: incomplete dynamic-layout report`)
     return
   }
@@ -147,6 +172,15 @@ function printReport(report: DynamicLayoutReport, scenario: Scenario, anglePair:
     `openai hull ${logos.openai.layoutHullPoints}/${logos.openai.hitHullPoints} angle ${logos.openai.angle.toFixed(3)} | ` +
     `claude hull ${logos.claude.layoutHullPoints}/${logos.claude.hitHullPoints} angle ${logos.claude.angle.toFixed(3)}`,
   )
+  console.log(
+    `  slots credit ${routing.creditSlotCount}/${formatSlotWidth(routing.creditSelectedSlotWidth)} | ` +
+    `left bands ${routing.left.bandCount} blocked ${routing.left.blockedBandCount} skipped ${routing.left.skippedBandCount} avg-slot ${formatSlotWidth(routing.left.avgChosenSlotWidth)} | ` +
+    `right bands ${routing.right.bandCount} blocked ${routing.right.blockedBandCount} skipped ${routing.right.skippedBandCount} avg-slot ${formatSlotWidth(routing.right.avgChosenSlotWidth)}`,
+  )
+}
+
+function formatSlotWidth(value: number | null): string {
+  return value === null ? 'none' : value.toFixed(1)
 }
 
 const browser = parseBrowser(parseStringFlag('browser'))

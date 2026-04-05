@@ -188,6 +188,12 @@ type DynamicLayoutReport = {
     remainingSegmentIndex: number
     remainingGraphemeIndex: number
   }
+  routing: {
+    creditSlotCount: number
+    creditSelectedSlotWidth: number | null
+    left: RoutingStats
+    right: RoutingStats
+  }
   credit: {
     left: number
     top: number
@@ -206,6 +212,28 @@ type DynamicLayoutReport = {
       hitHullPoints: number
     }
   }
+}
+
+type RoutingStats = {
+  bandCount: number
+  blockedBandCount: number
+  skippedBandCount: number
+  candidateSlotCount: number
+  chosenSlotCount: number
+  minChosenSlotWidth: number | null
+  maxChosenSlotWidth: number | null
+  avgChosenSlotWidth: number | null
+}
+
+type RoutingAccumulator = {
+  bandCount: number
+  blockedBandCount: number
+  skippedBandCount: number
+  candidateSlotCount: number
+  chosenSlotCount: number
+  chosenSlotWidthSum: number
+  minChosenSlotWidth: number
+  maxChosenSlotWidth: number
 }
 
 const stageNode = document.getElementById('stage')
@@ -372,13 +400,24 @@ function layoutColumn(
   lineHeight: number,
   obstacles: BandObstacle[],
   side: 'left' | 'right',
-): { lines: PositionedLine[], cursor: LayoutCursor } {
+): { lines: PositionedLine[], cursor: LayoutCursor, stats: RoutingStats } {
   let cursor: LayoutCursor = startCursor
   let lineTop = region.y
   const lines: PositionedLine[] = []
+  const stats: RoutingAccumulator = {
+    bandCount: 0,
+    blockedBandCount: 0,
+    skippedBandCount: 0,
+    candidateSlotCount: 0,
+    chosenSlotCount: 0,
+    chosenSlotWidthSum: 0,
+    minChosenSlotWidth: Infinity,
+    maxChosenSlotWidth: 0,
+  }
   while (true) {
     if (lineTop + lineHeight > region.y + region.height) break
 
+    stats.bandCount++
     const bandTop = lineTop
     const bandBottom = lineTop + lineHeight
     const blocked: Interval[] = []
@@ -389,12 +428,15 @@ function layoutColumn(
         blocked.push(intervals[intervalIndex]!)
       }
     }
+    if (blocked.length > 0) stats.blockedBandCount++
 
     const slots = carveTextLineSlots(
       { left: region.x, right: region.x + region.width },
       blocked,
     )
+    stats.candidateSlotCount += slots.length
     if (slots.length === 0) {
+      stats.skippedBandCount++
       lineTop += lineHeight
       continue
     }
@@ -416,6 +458,10 @@ function layoutColumn(
       if (candidate.left < slot.left) slot = candidate
     }
     const width = slot.right - slot.left
+    stats.chosenSlotCount++
+    stats.chosenSlotWidthSum += width
+    if (width < stats.minChosenSlotWidth) stats.minChosenSlotWidth = width
+    if (width > stats.maxChosenSlotWidth) stats.maxChosenSlotWidth = width
     const line = layoutNextLine(prepared, cursor, width)
     if (line === null) break
 
@@ -430,7 +476,7 @@ function layoutColumn(
     lineTop += lineHeight
   }
 
-  return { lines, cursor }
+  return { lines, cursor, stats: finalizeRoutingStats(stats) }
 }
 
 function syncPool<T extends HTMLElement>(pool: T[], length: number, create: () => T, parent: HTMLElement = stage): void {
@@ -774,6 +820,10 @@ function evaluateLayout(
   contentHeight: number
   hits: LogoHits
   bodyCursor: LayoutCursor
+  creditSlotCount: number
+  creditSelectedSlotWidth: number | null
+  leftRouting: RoutingStats
+  rightRouting: RoutingStats
 } {
   const { openaiObstacle, claudeObstacle, hits } = getLogoProjection(layout, lineHeight)
 
@@ -875,6 +925,10 @@ function evaluateLayout(
       contentHeight: layout.pageHeight,
       hits,
       bodyCursor: bodyResult.cursor,
+      creditSlotCount: creditSlots.length,
+      creditSelectedSlotWidth: findSelectedCreditSlotWidth(creditSlots, creditLeft),
+      leftRouting: bodyResult.stats,
+      rightRouting: emptyRoutingStats(),
     }
   }
 
@@ -905,6 +959,10 @@ function evaluateLayout(
     contentHeight: layout.pageHeight,
     hits,
     bodyCursor: rightResult.cursor,
+    creditSlotCount: creditSlots.length,
+    creditSelectedSlotWidth: findSelectedCreditSlotWidth(creditSlots, creditLeft),
+    leftRouting: leftResult.stats,
+    rightRouting: rightResult.stats,
   }
 }
 
@@ -915,7 +973,20 @@ function commitFrame(now: number): boolean {
   const pageHeight = pageHeightOverride ?? root.clientHeight
   const animating = updateSpinState(now)
   const layout = buildLayout(pageWidth, pageHeight, lineHeight)
-  const { headlineLines, creditLeft, creditTop, leftLines, rightLines, contentHeight, hits, bodyCursor } = evaluateLayout(layout, lineHeight, preparedBody)
+  const {
+    headlineLines,
+    creditLeft,
+    creditTop,
+    leftLines,
+    rightLines,
+    contentHeight,
+    hits,
+    bodyCursor,
+    creditSlotCount,
+    creditSelectedSlotWidth,
+    leftRouting,
+    rightRouting,
+  } = evaluateLayout(layout, lineHeight, preparedBody)
 
   currentLogoHits = hits
 
@@ -952,6 +1023,10 @@ function commitFrame(now: number): boolean {
     creditLeft,
     creditTop,
     bodyCursor,
+    creditSlotCount,
+    creditSelectedSlotWidth,
+    leftRouting,
+    rightRouting,
   )
   maybePublishReport()
 
@@ -1015,6 +1090,10 @@ function buildDynamicLayoutReport(
   creditLeft: number,
   creditTop: number,
   bodyCursor: LayoutCursor,
+  creditSlotCount: number,
+  creditSelectedSlotWidth: number | null,
+  leftRouting: RoutingStats,
+  rightRouting: RoutingStats,
 ): DynamicLayoutReport {
   return {
     status: 'ready',
@@ -1046,6 +1125,12 @@ function buildDynamicLayoutReport(
       consumedAllText: bodyCursor.segmentIndex >= preparedBody.segments.length,
       remainingSegmentIndex: bodyCursor.segmentIndex,
       remainingGraphemeIndex: bodyCursor.graphemeIndex,
+    },
+    routing: {
+      creditSlotCount,
+      creditSelectedSlotWidth,
+      left: leftRouting,
+      right: rightRouting,
     },
     credit: {
       left: creditLeft,
@@ -1144,6 +1229,43 @@ function parseDimensionParam(raw: string | null): number | null {
   const parsed = Number.parseInt(raw, 10)
   if (!Number.isFinite(parsed) || parsed <= 0) return null
   return parsed
+}
+
+function finalizeRoutingStats(acc: RoutingAccumulator): RoutingStats {
+  return {
+    bandCount: acc.bandCount,
+    blockedBandCount: acc.blockedBandCount,
+    skippedBandCount: acc.skippedBandCount,
+    candidateSlotCount: acc.candidateSlotCount,
+    chosenSlotCount: acc.chosenSlotCount,
+    minChosenSlotWidth: acc.chosenSlotCount === 0 ? null : Number(acc.minChosenSlotWidth.toFixed(3)),
+    maxChosenSlotWidth: acc.chosenSlotCount === 0 ? null : Number(acc.maxChosenSlotWidth.toFixed(3)),
+    avgChosenSlotWidth: acc.chosenSlotCount === 0
+      ? null
+      : Number((acc.chosenSlotWidthSum / acc.chosenSlotCount).toFixed(3)),
+  }
+}
+
+function emptyRoutingStats(): RoutingStats {
+  return {
+    bandCount: 0,
+    blockedBandCount: 0,
+    skippedBandCount: 0,
+    candidateSlotCount: 0,
+    chosenSlotCount: 0,
+    minChosenSlotWidth: null,
+    maxChosenSlotWidth: null,
+    avgChosenSlotWidth: null,
+  }
+}
+
+function findSelectedCreditSlotWidth(slots: Interval[], creditLeft: number): number | null {
+  for (let index = 0; index < slots.length; index++) {
+    const slot = slots[index]!
+    if (Math.round(slot.left) !== creditLeft) continue
+    return Number((slot.right - slot.left).toFixed(3))
+  }
+  return null
 }
 
 function withRequestId(report: DynamicLayoutReport): DynamicLayoutReport {

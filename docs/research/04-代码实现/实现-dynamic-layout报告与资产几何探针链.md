@@ -43,12 +43,14 @@
 - 页面与排版参数：`page`、`typography`
 - 文本流状态：headline line 数、left/right body line 数、是否用到右栏、是否吃完整段正文
 - 资产几何状态：logo rect、当前 angle、layout/hit hull 点数
+- 路由状态：credit slot 数、左右栏被 obstacle 阻塞的 band 数、跳过 band 数、平均被选 slot 宽度
 
 这非常符合 `dynamic-layout` 的工程意义。
 它最重要的不是“某一帧长什么样”，而是：
 - 两栏 handoff 还通不通
 - obstacle geometry 还在不在
 - 资产投影和正文续排有没有一起跑通
+- 以及 obstacle 到底把 line-slot 路由挤压成了什么样
 
 ## 3. 报告是在 `commitFrame()` 里生成的
 这点很关键。
@@ -88,7 +90,23 @@
 
 也就是说，这条探针守护的正是页面真正拿来绕排和 hit-test 的那组资产几何。
 
-## 6. checker 复用了统一 automation 骨架
+## 6. line-slot 路由统计被抬升成第一等探针信号
+这次又往前走了一步：`layoutColumn()` 不再只是产出 `lines + cursor`，还会产出 routing stats。
+
+它现在显式记录：
+- 一共扫过多少个 line band
+- 其中多少个 band 确实遇到 obstacle
+- 多少 band 因为没有 slot 被直接跳过
+- 每个 band 总共看到多少候选 slot
+- 最终被选 slot 的平均/最小/最大宽度
+
+这很重要，因为它让 checker 不只能看“正文有没有排完”，还能看：
+- 是不是因为 obstacle 过于挤压，slot 宽度已经很糟
+- 是不是大量 band 被直接跳过
+
+也就是把原本藏在 demo 几何内部的 routing 压力外显了出来。
+
+## 7. checker 复用了统一 automation 骨架
 `scripts/dynamic-layout-check.ts` 走的还是 repo 统一模式：
 - `acquireBrowserAutomationLock()`
 - `ensurePageServer()`
@@ -109,6 +127,7 @@
 - 窄屏单栏
 - 低高度截断
 - 以及不同 logo 旋转组合下的资产几何状态
+- 以及这些组合如何改变左右栏的 slot 压力
 
 而不必依赖浏览器外部窗口管理能力。
 
