@@ -1,4 +1,5 @@
 import { clearNavigationReport, publishNavigationPhase, publishNavigationReport } from '../report-utils.ts'
+import { JUSTIFICATION_PROBE_PRESETS } from '../probe-presets.ts'
 import {
   createDemoResources,
   buildDemoFrame,
@@ -279,28 +280,11 @@ function parseBooleanParam(raw: string | null, fallback: boolean): boolean {
 }
 
 function renderProbeRail(controls: DemoControls): void {
-  const presets = [
-    {
-      label: 'Default 364',
-      href: buildProbeHref({ width: 364, showIndicators: true }),
-      active: controls.colWidth === 364 && controls.showIndicators,
-    },
-    {
-      label: 'Narrow 260',
-      href: buildProbeHref({ width: 260, showIndicators: true }),
-      active: controls.colWidth === 260 && controls.showIndicators,
-    },
-    {
-      label: 'Probe 364',
-      href: buildProbeHref({ width: 364, showIndicators: false }),
-      active: controls.colWidth === 364 && !controls.showIndicators,
-    },
-    {
-      label: 'Wide 520',
-      href: buildProbeHref({ width: 520, showIndicators: false }),
-      active: controls.colWidth === 520 && !controls.showIndicators,
-    },
-  ]
+  const presets = JUSTIFICATION_PROBE_PRESETS.map(preset => ({
+    label: preset.label,
+    href: buildProbeHref({ width: preset.width, showIndicators: preset.showIndicators }),
+    active: controls.colWidth === preset.width && controls.showIndicators === preset.showIndicators,
+  }))
   probeRailNode.replaceChildren(...presets.map(createProbeLink))
 }
 

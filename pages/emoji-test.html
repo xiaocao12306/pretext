@@ -60,6 +60,7 @@
 <div id="output">Running...</div>
 <script type="module">
 import { clearNavigationReport, publishNavigationPhase, publishNavigationReport } from './report-utils.ts'
+import { EMOJI_PROBE_PRESETS } from './probe-presets.ts'
 
 const emoji = [
   // Basic smileys
@@ -94,7 +95,9 @@ const fonts = [
   '"Trebuchet MS", Helvetica, sans-serif',
 ];
 
-const defaultSizes = [10, 12, 14, 15, 16, 18, 20, 22, 24, 28, 32];
+const defaultPreset = EMOJI_PROBE_PRESETS[0];
+if (defaultPreset === undefined) throw new Error('emoji probe presets missing');
+const defaultSizes = defaultPreset.sizes;
 
 const params = new URLSearchParams(location.search);
 const requestId = params.get('requestId') ?? undefined;
@@ -347,28 +350,11 @@ function parseThresholdParam(raw) {
 }
 
 function renderProbeRail() {
-  const presets = [
-    {
-      label: 'Default',
-      href: buildProbeHref({}),
-      active: arraysEqual(sizes, defaultSizes) && thresholdPx === 0.5,
-    },
-    {
-      label: 'Tight 0.5',
-      href: buildProbeHref({ sizes: [12, 16, 24, 32], threshold: 0.5 }),
-      active: arraysEqual(sizes, [12, 16, 24, 32]) && thresholdPx === 0.5,
-    },
-    {
-      label: 'Coarse 1.0',
-      href: buildProbeHref({ sizes: [10, 14, 18, 24, 32], threshold: 1 }),
-      active: arraysEqual(sizes, [10, 14, 18, 24, 32]) && thresholdPx === 1,
-    },
-    {
-      label: 'Dense 0.25',
-      href: buildProbeHref({ sizes: [10, 12, 14, 16, 18, 20, 24], threshold: 0.25 }),
-      active: arraysEqual(sizes, [10, 12, 14, 16, 18, 20, 24]) && thresholdPx === 0.25,
-    },
-  ];
+  const presets = EMOJI_PROBE_PRESETS.map(preset => ({
+    label: preset.label,
+    href: preset.key === 'default' ? buildProbeHref({}) : buildProbeHref({ sizes: preset.sizes, threshold: preset.threshold }),
+    active: arraysEqual(sizes, preset.sizes) && thresholdPx === preset.threshold,
+  }));
 
   probeRailNode.replaceChildren(...presets.map(createProbeLink));
 }

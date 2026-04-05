@@ -1,5 +1,6 @@
 import { type ChildProcess } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
+import { JUSTIFICATION_PROBE_PRESETS, findJustificationProbePreset, type JustificationProbePreset } from '../pages/probe-presets.ts'
 import {
   acquireBrowserAutomationLock,
   createBrowserSession,
@@ -90,6 +91,22 @@ function parseWidths(raw: string | null): number[] {
   return widths
 }
 
+function parsePresetKeys(raw: string | null): JustificationProbePreset[] {
+  const value = raw ?? process.env['JUSTIFICATION_CHECK_PRESETS'] ?? ''
+  if (value.trim() === '') return []
+  return value
+    .split(',')
+    .map(part => part.trim())
+    .filter(part => part.length > 0)
+    .map(key => {
+      const preset = findJustificationProbePreset(key)
+      if (preset === null) {
+        throw new Error(`Unknown justification preset ${key}; expected one of ${JUSTIFICATION_PROBE_PRESETS.map(item => item.key).join(', ')}`)
+      }
+      return preset
+    })
+}
+
 function printReport(report: JustificationReport): void {
   if (report.status === 'error') {
     console.log(`error: ${report.message ?? 'unknown error'}`)
@@ -135,6 +152,7 @@ function formatSignedInt(value: number): string {
 
 const browser = parseBrowser(parseStringFlag('browser'))
 const widths = parseWidths(parseStringFlag('widths'))
+const presets = parsePresetKeys(parseStringFlag('presets'))
 const output = parseStringFlag('output')
 const requestedPortRaw = parseStringFlag('port')
 const requestedPort = requestedPortRaw === null ? null : Number.parseInt(requestedPortRaw, 10)
@@ -143,26 +161,45 @@ const timeoutMs = Number.parseInt(process.env['JUSTIFICATION_CHECK_TIMEOUT_MS'] 
 let serverProcess: ChildProcess | null = null
 const lock = await acquireBrowserAutomationLock(browser)
 const session = createBrowserSession(browser)
-const reports: JustificationReport[] = []
+const reports: Array<JustificationReport | { preset: JustificationProbePreset['key']; report: JustificationReport }> = []
 
 try {
   const port = await getAvailablePort(requestedPort)
   const pageServer = await ensurePageServer(port, '/demos/justification-comparison', process.cwd())
   serverProcess = pageServer.process
 
-  for (let index = 0; index < widths.length; index++) {
-    const width = widths[index]!
-    const requestId = `${Date.now()}-${width}-${Math.random().toString(36).slice(2, 8)}`
-    const url =
-      `${pageServer.baseUrl}/demos/justification-comparison?report=1` +
-      `&width=${width}` +
-      `&showIndicators=0` +
-      `&requestId=${encodeURIComponent(requestId)}`
-    const report = await loadHashReport<JustificationReport>(session, url, requestId, browser, timeoutMs)
-    reports.push(report)
-    printReport(report)
-    if (report.status === 'error') {
-      process.exitCode = 1
+  if (presets.length > 0) {
+    for (let index = 0; index < presets.length; index++) {
+      const preset = presets[index]!
+      const requestId = `${Date.now()}-${preset.key}-${Math.random().toString(36).slice(2, 8)}`
+      const url =
+        `${pageServer.baseUrl}/demos/justification-comparison?report=1` +
+        `&width=${preset.width}` +
+        `&showIndicators=${preset.showIndicators ? '1' : '0'}` +
+        `&requestId=${encodeURIComponent(requestId)}`
+      const report = await loadHashReport<JustificationReport>(session, url, requestId, browser, timeoutMs)
+      reports.push({ preset: preset.key, report })
+      console.log(`[preset:${preset.key}]`)
+      printReport(report)
+      if (report.status === 'error') {
+        process.exitCode = 1
+      }
+    }
+  } else {
+    for (let index = 0; index < widths.length; index++) {
+      const width = widths[index]!
+      const requestId = `${Date.now()}-${width}-${Math.random().toString(36).slice(2, 8)}`
+      const url =
+        `${pageServer.baseUrl}/demos/justification-comparison?report=1` +
+        `&width=${width}` +
+        `&showIndicators=0` +
+        `&requestId=${encodeURIComponent(requestId)}`
+      const report = await loadHashReport<JustificationReport>(session, url, requestId, browser, timeoutMs)
+      reports.push(report)
+      printReport(report)
+      if (report.status === 'error') {
+        process.exitCode = 1
+      }
     }
   }
 
