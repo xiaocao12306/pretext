@@ -44,6 +44,9 @@ type EmojiReport = {
   environment?: EnvironmentFingerprint
   emojiCount?: number
   fontCount?: number
+  thresholdPx?: number
+  sizes?: number[]
+  totalMismatchObservations?: number
   sizeSummaries?: EmojiSizeSummary[]
   constantAcrossAllSizes?: boolean
   fontIndependentSizes?: number[]
@@ -73,7 +76,9 @@ function printReport(report: EmojiReport): void {
 
   console.log(
     `emoji ${report.emojiCount ?? '?'} | fonts ${report.fontCount ?? '?'} | ` +
-    `constant-all-sizes ${report.constantAcrossAllSizes ? 'yes' : 'no'}`,
+    `constant-all-sizes ${report.constantAcrossAllSizes ? 'yes' : 'no'} | ` +
+    `threshold ${report.thresholdPx?.toFixed(2) ?? '?'} | ` +
+    `sizes ${(report.sizes ?? []).join(',') || '?'}`,
   )
   if (report.environment !== undefined) {
     const env = report.environment
@@ -81,6 +86,9 @@ function printReport(report: EmojiReport): void {
       `env: dpr ${env.devicePixelRatio} | viewport ${env.viewport.innerWidth}x${env.viewport.innerHeight} | ` +
       `outer ${env.viewport.outerWidth}x${env.viewport.outerHeight}`,
     )
+  }
+  if (report.totalMismatchObservations !== undefined) {
+    console.log(`mismatch observations: ${report.totalMismatchObservations}`)
   }
 
   for (const summary of report.sizeSummaries ?? []) {
@@ -101,6 +109,8 @@ const requestedPortRaw = parseStringFlag('port')
 const requestedPort = requestedPortRaw === null ? null : Number.parseInt(requestedPortRaw, 10)
 const output = parseStringFlag('output')
 const timeoutMs = Number.parseInt(process.env['EMOJI_CHECK_TIMEOUT_MS'] ?? '60000', 10)
+const sizes = parseStringFlag('sizes')
+const threshold = parseStringFlag('threshold')
 
 let serverProcess: ChildProcess | null = null
 const lock = await acquireBrowserAutomationLock(browser)
@@ -111,7 +121,11 @@ try {
   const pageServer = await ensurePageServer(port, '/emoji-test', process.cwd())
   serverProcess = pageServer.process
   const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-  const url = `${pageServer.baseUrl}/emoji-test?report=1&requestId=${encodeURIComponent(requestId)}`
+  const url =
+    `${pageServer.baseUrl}/emoji-test?report=1` +
+    `&requestId=${encodeURIComponent(requestId)}` +
+    (sizes === null ? '' : `&sizes=${encodeURIComponent(sizes)}`) +
+    (threshold === null ? '' : `&threshold=${encodeURIComponent(threshold)}`)
   const report = await loadHashReport<EmojiReport>(session, url, requestId, browser, timeoutMs)
   printReport(report)
 

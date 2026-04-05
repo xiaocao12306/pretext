@@ -8,6 +8,17 @@
   body { font-family: system-ui; background: #0a0a0a; color: #e0e0e0; padding: 24px; }
   h1 { font-size: 20px; margin-bottom: 4px; }
   .sub { font-size: 13px; color: #888; margin-bottom: 20px; }
+  .panel {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border: 1px solid #222;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(22, 22, 22, 0.96), rgba(14, 14, 14, 0.96));
+    font: 12px/1.5 "SF Mono", monospace;
+    color: #c9c9c9;
+    white-space: pre-wrap;
+  }
+  .panel[hidden] { display: none; }
   #output { font: 13px "SF Mono", monospace; white-space: pre-wrap; background: #111; border: 1px solid #222; border-radius: 8px; padding: 16px; }
   .match { color: #81c784; }
   .mismatch { color: #ef5350; }
@@ -19,6 +30,7 @@
 <body>
 <h1>Emoji Width: Canvas vs DOM — Multi-Font Sweep</h1>
 <p class="sub">Tests whether emoji canvas/DOM diff is constant across fonts (font-independent) or varies per font.</p>
+<div id="summaryPanel" class="panel" hidden></div>
 <div id="output">Running...</div>
 <script type="module">
 import { clearNavigationReport, publishNavigationPhase, publishNavigationReport } from './report-utils.ts'
@@ -56,13 +68,17 @@ const fonts = [
   '"Trebuchet MS", Helvetica, sans-serif',
 ];
 
-const sizes = [10, 12, 14, 15, 16, 18, 20, 22, 24, 28, 32];
+const defaultSizes = [10, 12, 14, 15, 16, 18, 20, 22, 24, 28, 32];
 
 const params = new URLSearchParams(location.search);
 const requestId = params.get('requestId') ?? undefined;
 const reportRequested = params.get('report') === '1';
+const thresholdPx = parseThresholdParam(params.get('threshold'));
+const sizes = parseNumberListParam(params.get('sizes'), defaultSizes);
 const outputNode = document.getElementById('output');
 if (!(outputNode instanceof HTMLDivElement)) throw new Error('#output not found');
+const summaryNode = document.getElementById('summaryPanel');
+if (!(summaryNode instanceof HTMLDivElement)) throw new Error('#summaryPanel not found');
 
 if (reportRequested) {
   clearNavigationReport();
@@ -79,6 +95,7 @@ document.body.appendChild(container);
 // Also track per-font to see if there's variance
 const diffsBySizeFont = new Map(); // size → Map<font, diff[]>
 const sizeSummaries = [];
+let totalMismatchObservations = 0;
 
 let out = '';
 
@@ -111,9 +128,10 @@ for (const fontFamily of fonts) {
       const domW = spans[i].getBoundingClientRect().width;
       const diff = canvasW - domW;
 
-      if (Math.abs(diff) >= 0.5) {
+      if (Math.abs(diff) >= thresholdPx) {
         mismatches++;
         diffs.push({ emoji: emoji[i], canvasW, domW, diff });
+        totalMismatchObservations++;
       }
 
       // Track per size+font
@@ -175,13 +193,13 @@ for (const sz of sizes) {
   const firstFont = fonts[0];
   const firstFontEntries = fontMap.get(firstFont) || [];
   const mismatchDiffs = firstFontEntries
-    .filter(entry => Math.abs(entry.diff) >= 0.5)
+    .filter(entry => Math.abs(entry.diff) >= thresholdPx)
     .map(entry => entry.diff);
   const uniqueCorrectionDiffs = [...new Set(mismatchDiffs.map(diff => Number(diff.toFixed(2))))];
   const sampleDiffs = [];
   for (const [e, fontDiffs] of emojiDiffsByFont) {
     const vals = [...fontDiffs.values()];
-    if (Math.abs(vals[0]) >= 0.5) {
+    if (Math.abs(vals[0]) >= thresholdPx) {
       sampleDiffs.push(`${e} ${vals[0] > 0 ? '+' : ''}${vals[0].toFixed(2)}`);
     }
     if (sampleDiffs.length >= 5) break;
@@ -214,7 +232,7 @@ for (const sz of sizes) {
   // Get diffs from first font (they should all be the same)
   const firstFont = fonts[0];
   const entries = fontMap.get(firstFont) || [];
-  const mismatchDiffs = entries.filter(e => Math.abs(e.diff) >= 0.5);
+  const mismatchDiffs = entries.filter(e => Math.abs(e.diff) >= thresholdPx);
 
   if (mismatchDiffs.length === 0) {
     out += `  ${sz}px: <span class="match">no correction needed</span>\n`;
@@ -233,7 +251,7 @@ if (sz16) {
   const matched = [];
   const mismatched = [];
   for (const { emoji: e, diff } of firstEntries) {
-    if (Math.abs(diff) >= 0.5) {
+    if (Math.abs(diff) >= thresholdPx) {
       mismatched.push({ emoji: e, diff });
     } else {
       matched.push(e);
@@ -248,6 +266,9 @@ const report = withRequestId({
   environment: getEnvironmentFingerprint(),
   emojiCount: emoji.length,
   fontCount: fonts.length,
+  thresholdPx,
+  sizes,
+  totalMismatchObservations,
   sizeSummaries,
   constantAcrossAllSizes: sizeSummaries.every(summary => summary.constantAcrossFonts),
   fontIndependentSizes: sizeSummaries.filter(summary => summary.constantAcrossFonts).map(summary => summary.size),
@@ -256,6 +277,8 @@ const report = withRequestId({
 
 document.body.removeChild(container);
 outputNode.innerHTML = out;
+summaryNode.hidden = false;
+summaryNode.textContent = formatSummary(report);
 
 if (reportRequested) {
   publishNavigationReport(report);
@@ -276,6 +299,42 @@ function createMeasureContext() {
 
 function withRequestId(report) {
   return requestId === undefined ? report : { ...report, requestId };
+}
+
+function parseNumberListParam(raw, fallback) {
+  if (raw === null || raw.trim() === '') return fallback.slice();
+  const parsed = raw
+    .split(',')
+    .map(part => Number.parseInt(part.trim(), 10))
+    .filter(value => Number.isFinite(value) && value > 0);
+  return parsed.length === 0 ? fallback.slice() : parsed;
+}
+
+function parseThresholdParam(raw) {
+  if (raw === null || raw.trim() === '') return 0.5;
+  const parsed = Number.parseFloat(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0.5;
+}
+
+function formatSummary(report) {
+  const lines = [
+    `threshold ${report.thresholdPx.toFixed(2)}px`,
+    `sizes ${report.sizes.join(', ')}`,
+    `emoji ${report.emojiCount}  fonts ${report.fontCount}  mismatch-observations ${report.totalMismatchObservations}`,
+    report.constantAcrossAllSizes
+      ? 'all sampled sizes stay font-constant'
+      : `variable sizes ${report.variableSizes.join(', ') || 'none'}`,
+  ];
+
+  for (const summary of report.sizeSummaries) {
+    lines.push(
+      `${summary.size}px  mismatch ${summary.mismatchedEmojiCount}  ` +
+      `${summary.constantAcrossFonts ? 'constant' : `varies ${summary.maxVariance.toFixed(2)}px`}  ` +
+      `corr ${summary.correctionDiffs.length === 0 ? 'none' : summary.correctionDiffs.map(diff => `${diff > 0 ? '+' : ''}${diff.toFixed(2)}`).join(', ')}`,
+    );
+  }
+
+  return lines.join('\n');
 }
 
 function getEnvironmentFingerprint() {

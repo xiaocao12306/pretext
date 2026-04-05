@@ -31,8 +31,20 @@
 - correction diff 集合
 - 是否跨字体恒定
 - 最大方差与 worst emoji
+- 当前 `thresholdPx`
+- 当前 `sizes`
+- 总 mismatch observation 数
 
 这是因为它的目标是“验证 correction 假设是否还站得住”，不是保存完整实验数据库。
+
+## 2.5. 页面现在支持参数化 sweep，而不是写死一组样本
+`pages/emoji-test.html` 不再只能跑固定字号表。
+
+现在页面和 checker 都能透传：
+- `sizes=10,12,16,...`
+- `threshold=0.5`
+
+再配合页面顶部新增的 summary panel，就能把“这次探针到底用什么条件跑的”直接显示出来。
 
 ## 3. `OffscreenCanvas` 现在有 DOM canvas fallback
 原始页面直接依赖 `OffscreenCanvas`。

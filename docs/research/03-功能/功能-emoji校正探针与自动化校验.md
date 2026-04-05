@@ -19,9 +19,13 @@
 ## 页面侧能力
 - `pages/emoji-test.html` 仍保留人读输出
 - 同时支持 `?report=1&requestId=...`
+- 也支持 `sizes=...`、`threshold=...`
 - 会回传 machine-readable summary：
   - `emojiCount`
   - `fontCount`
+  - `thresholdPx`
+  - `sizes`
+  - `totalMismatchObservations`
   - `sizeSummaries`
   - `fontIndependentSizes`
   - `variableSizes`
@@ -31,6 +35,7 @@
 - `scripts/emoji-check.ts` 复用了现有 browser automation / hash report 通道
 - 可以像其他 checker 一样直接输出摘要
 - 支持 `--output=...` 落 JSON
+- 支持把 `--sizes=...`、`--threshold=...` 透传给页面
 - 目前和 repo 里其他 demo/diagnostic checker 一样，先走 Chrome / Safari 两路
 
 ## 工程价值
