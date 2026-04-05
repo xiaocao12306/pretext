@@ -90,5 +90,5 @@ function rewriteDemoLinksForStaticRoot(html: string, targetRelativePath: string)
   if (targetRelativePath !== 'index.html') return html
   return html
     .replace(/\bhref="\/demos\/([^"?#\/]+)([^"]*)"/g, (_match, slug: string, suffix: string) => `href="./${slug}${suffix}"`)
-    .replace(/\bhref="\/(editorial-engine|justification-comparison|emoji-test)([^"]*)"/g, (_match, slug: string, suffix: string) => `href="./${slug}${suffix}"`)
+    .replace(/\bhref="\/(dynamic-layout|editorial-engine|justification-comparison|emoji-test)([^"]*)"/g, (_match, slug: string, suffix: string) => `href="./${slug}${suffix}"`)
 }

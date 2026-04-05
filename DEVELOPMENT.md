@@ -44,6 +44,7 @@ Useful pages:
 - `/demos/accordion`
 - `/demos/bubbles`
 - `/demos/dynamic-layout`
+- `/dynamic-layout`
 - `/demos/editorial-engine`
 - `/editorial-engine`
 - `/demos/justification-comparison`
