@@ -32,6 +32,12 @@
 
 而不是只能吃当前浏览器 viewport 或靠人工点击旋转。
 
+而且页面本身也不再只把这些参数当“隐藏测试开关”：
+- 当传 `pageWidth/pageHeight` 时，会把 `.page` 收成一个固定 frame
+- hint pill 也会直接显示当前场景尺寸、spread/narrow 状态和两个 logo 角度
+
+所以这条参数链已经同时服务 automation 和人工复现。
+
 ## 2. report 的重点不是像素，而是流式布局是否还成立
 页面回传的摘要集中在三类信号：
 - 页面与排版参数：`page`、`typography`
@@ -95,12 +101,14 @@
 
 而且它已经不只会拉“当前窗口”：
 - 支持 `--scenarios=1365x900,700x900,...`
+- 支持 `--anglePairs=openai:claude,...`
 - 页面侧再用 `pageWidth/pageHeight` 明确吃进这些场景
 
 这样脚本就能稳定区分：
 - 双栏 spread
 - 窄屏单栏
 - 低高度截断
+- 以及不同 logo 旋转组合下的资产几何状态
 
 而不必依赖浏览器外部窗口管理能力。
 

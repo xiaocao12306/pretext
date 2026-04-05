@@ -213,8 +213,11 @@ if (!(stageNode instanceof HTMLDivElement)) throw new Error('#stage not found')
 const stage = stageNode
 const pageNode = document.querySelector('.page')
 if (!(pageNode instanceof HTMLElement)) throw new Error('.page not found')
+const hintNode = document.getElementById('hintPill')
+if (!(hintNode instanceof HTMLParagraphElement)) throw new Error('#hintPill not found')
 
 type DomCache = {
+  hint: HTMLParagraphElement // cache lifetime: page
   page: HTMLElement // cache lifetime: page
   headline: HTMLHeadingElement // cache lifetime: page
   credit: HTMLParagraphElement // cache lifetime: page
@@ -253,6 +256,7 @@ if (reportRequested) {
 }
 
 const domCache: DomCache = {
+  hint: hintNode,
   page: pageNode,
   headline: createHeadline(),
   credit: createCredit(),
@@ -474,6 +478,9 @@ function projectChromeLayout(layout: PageLayout, contentHeight: number): void {
   domCache.claudeLogo.style.width = `${layout.claudeRect.width}px`
   domCache.claudeLogo.style.height = `${layout.claudeRect.height}px`
   domCache.claudeLogo.style.transform = `rotate(${logoAnimations.claude.angle}rad)`
+
+  applyScenarioFrame(layout)
+  syncHint(copyHintText(layout))
 }
 
 function positionedLinesEqual(a: PositionedLine[], b: PositionedLine[]): boolean {
@@ -1065,6 +1072,64 @@ function maybePublishReport(): void {
   if (!reportRequested || reportPublished || lastCommittedReport === null) return
   reportPublished = true
   publishNavigationReport(withRequestId(lastCommittedReport))
+}
+
+function applyScenarioFrame(layout: PageLayout): void {
+  const isFramed = pageWidthOverride !== null || pageHeightOverride !== null
+  if (!isFramed) {
+    document.body.style.overflow = 'hidden'
+    document.body.style.display = ''
+    document.body.style.alignItems = ''
+    document.body.style.justifyContent = ''
+    document.body.style.padding = ''
+    domCache.page.style.width = ''
+    domCache.page.style.height = ''
+    domCache.page.style.minHeight = ''
+    domCache.page.style.maxWidth = ''
+    domCache.page.style.margin = ''
+    domCache.page.style.borderRadius = ''
+    domCache.page.style.boxShadow = ''
+    domCache.page.style.border = ''
+    return
+  }
+
+  document.body.style.overflow = 'auto'
+  document.body.style.display = 'flex'
+  document.body.style.alignItems = 'flex-start'
+  document.body.style.justifyContent = 'center'
+  document.body.style.padding = '24px'
+  domCache.page.style.width = `${layout.pageWidth}px`
+  domCache.page.style.height = `${layout.pageHeight}px`
+  domCache.page.style.minHeight = '0'
+  domCache.page.style.maxWidth = 'none'
+  domCache.page.style.margin = '0 auto'
+  domCache.page.style.borderRadius = '24px'
+  domCache.page.style.border = '1px solid rgba(17, 16, 13, 0.12)'
+  domCache.page.style.boxShadow = '0 28px 60px rgba(17, 16, 13, 0.16)'
+}
+
+function copyHintText(layout: PageLayout): string {
+  const base = 'Everything laid out in JS. Resize horizontally and vertically, then click the logos.'
+  const isFramed = pageWidthOverride !== null || pageHeightOverride !== null
+  if (!isFramed && logoAnimations.openai.angle === 0 && logoAnimations.claude.angle === 0) {
+    return base
+  }
+
+  const parts = [
+    `${layout.pageWidth}x${layout.pageHeight}`,
+    layout.isNarrow ? 'narrow' : 'spread',
+    `openai ${formatAngle(logoAnimations.openai.angle)}`,
+    `claude ${formatAngle(logoAnimations.claude.angle)}`,
+  ]
+  return `${parts.join(' • ')}`
+}
+
+function syncHint(text: string): void {
+  domCache.hint.textContent = text
+}
+
+function formatAngle(angle: number): string {
+  return `${(angle / Math.PI).toFixed(2)}pi`
 }
 
 function parseAngleParam(raw: string | null): number {
