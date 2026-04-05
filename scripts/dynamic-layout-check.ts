@@ -1,5 +1,6 @@
 import { type ChildProcess } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
+import { DYNAMIC_LAYOUT_PROBE_PRESETS, findDynamicLayoutProbePreset, type DynamicLayoutProbePreset } from '../pages/probe-presets.ts'
 import {
   acquireBrowserAutomationLock,
   createBrowserSession,
@@ -82,6 +83,14 @@ type AnglePair = {
   claudeAngle: string
 }
 
+type DynamicLayoutRun = {
+  label: string
+  scenario: Scenario
+  anglePair: AnglePair
+  presetKey?: DynamicLayoutProbePreset['key']
+  showDiagnostics?: boolean
+}
+
 function parseStringFlag(name: string): string | null {
   const prefix = `--${name}=`
   const arg = process.argv.find(value => value.startsWith(prefix))
@@ -146,9 +155,57 @@ function parseAnglePair(raw: string): AnglePair {
   return { openaiAngle, claudeAngle }
 }
 
-function printReport(report: DynamicLayoutReport, scenario: Scenario, anglePair: AnglePair): void {
+function parsePresetRuns(raw: string | null): DynamicLayoutRun[] {
+  const value = raw ?? process.env['DYNAMIC_LAYOUT_CHECK_PRESETS'] ?? ''
+  if (value.trim() === '') return []
+  return value
+    .split(',')
+    .map(part => part.trim())
+    .filter(part => part.length > 0)
+    .map(key => {
+      const preset = findDynamicLayoutProbePreset(key)
+      if (preset === null) {
+        throw new Error(`Unknown dynamic-layout preset ${key}; expected one of ${DYNAMIC_LAYOUT_PROBE_PRESETS.map(item => item.key).join(', ')}`)
+      }
+      return {
+        label: preset.key,
+        scenario: { width: preset.pageWidth, height: preset.pageHeight },
+        anglePair: {
+          openaiAngle: preset.openaiAngle.toFixed(6),
+          claudeAngle: preset.claudeAngle.toFixed(6),
+        },
+        presetKey: preset.key,
+        showDiagnostics: preset.showDiagnostics,
+      }
+    })
+}
+
+function buildMatrixRuns(scenarios: Scenario[], anglePairs: AnglePair[]): DynamicLayoutRun[] {
+  const runs: DynamicLayoutRun[] = []
+  for (let scenarioIndex = 0; scenarioIndex < scenarios.length; scenarioIndex++) {
+    const scenario = scenarios[scenarioIndex]!
+    for (let angleIndex = 0; angleIndex < anglePairs.length; angleIndex++) {
+      const anglePair = anglePairs[angleIndex]!
+      runs.push({
+        label: `${scenario.width}x${scenario.height} @ ${anglePair.openaiAngle}:${anglePair.claudeAngle}`,
+        scenario,
+        anglePair,
+      })
+    }
+  }
+  return runs
+}
+
+function formatRunLabel(run: DynamicLayoutRun): string {
+  return run.presetKey === undefined
+    ? run.label
+    : `${run.presetKey} (${run.scenario.width}x${run.scenario.height} @ ${run.anglePair.openaiAngle}:${run.anglePair.claudeAngle})`
+}
+
+function printReport(report: DynamicLayoutReport, run: DynamicLayoutRun): void {
+  const descriptor = formatRunLabel(run)
   if (report.status === 'error') {
-    console.log(`${scenario.width}x${scenario.height} @ ${anglePair.openaiAngle}:${anglePair.claudeAngle} | error: ${report.message ?? 'unknown error'}`)
+    console.log(`${descriptor} | error: ${report.message ?? 'unknown error'}`)
     return
   }
 
@@ -158,12 +215,12 @@ function printReport(report: DynamicLayoutReport, scenario: Scenario, anglePair:
   const routing = report.routing
   const logos = report.logos
   if (page === undefined || headline === undefined || body === undefined || routing === undefined || logos === undefined) {
-    console.log(`${scenario.width}x${scenario.height} @ ${anglePair.openaiAngle}:${anglePair.claudeAngle} | error: incomplete dynamic-layout report`)
+    console.log(`${descriptor} | error: incomplete dynamic-layout report`)
     return
   }
 
   console.log(
-    `${scenario.width}x${scenario.height} @ ${anglePair.openaiAngle}:${anglePair.claudeAngle} -> ${page.width}x${page.height} | ${page.isNarrow ? 'narrow' : 'spread'} | ` +
+    `${descriptor} -> ${page.width}x${page.height} | ${page.isNarrow ? 'narrow' : 'spread'} | ` +
     `headline ${headline.lineCount} | body ${body.leftLineCount}+${body.rightLineCount}=${body.totalLineCount} | ` +
     `${body.consumedAllText ? 'complete' : `truncated@${body.remainingSegmentIndex}:${body.remainingGraphemeIndex}`}`,
   )
@@ -184,8 +241,13 @@ function formatSlotWidth(value: number | null): string {
 }
 
 const browser = parseBrowser(parseStringFlag('browser'))
-const scenarios = parseScenarios(parseStringFlag('scenarios'))
-const anglePairs = parseAnglePairs(parseStringFlag('anglePairs'))
+const presetRuns = parsePresetRuns(parseStringFlag('presets'))
+const runs = presetRuns.length > 0
+  ? presetRuns
+  : buildMatrixRuns(
+      parseScenarios(parseStringFlag('scenarios')),
+      parseAnglePairs(parseStringFlag('anglePairs')),
+    )
 const output = parseStringFlag('output')
 const requestedPortRaw = parseStringFlag('port')
 const requestedPort = requestedPortRaw === null ? null : Number.parseInt(requestedPortRaw, 10)
@@ -194,34 +256,32 @@ const timeoutMs = Number.parseInt(process.env['DYNAMIC_LAYOUT_CHECK_TIMEOUT_MS']
 let serverProcess: ChildProcess | null = null
 const lock = await acquireBrowserAutomationLock(browser)
 const session = createBrowserSession(browser)
-const reports: Array<{ scenario: Scenario; anglePair: AnglePair; report: DynamicLayoutReport }> = []
+const reports: Array<{ preset?: DynamicLayoutProbePreset['key']; scenario: Scenario; anglePair: AnglePair; report: DynamicLayoutReport }> = []
 
 try {
   const port = await getAvailablePort(requestedPort)
   const pageServer = await ensurePageServer(port, '/demos/dynamic-layout', process.cwd())
   serverProcess = pageServer.process
 
-  for (let scenarioIndex = 0; scenarioIndex < scenarios.length; scenarioIndex++) {
-    const scenario = scenarios[scenarioIndex]!
-    for (let angleIndex = 0; angleIndex < anglePairs.length; angleIndex++) {
-      const anglePair = anglePairs[angleIndex]!
-      const requestId =
-        `${Date.now()}-${scenario.width}x${scenario.height}-${anglePair.openaiAngle}:${anglePair.claudeAngle}-` +
-        `${Math.random().toString(36).slice(2, 8)}`
-      const url =
-        `${pageServer.baseUrl}/demos/dynamic-layout?report=1` +
-        `&requestId=${encodeURIComponent(requestId)}` +
-        `&pageWidth=${scenario.width}` +
-        `&pageHeight=${scenario.height}` +
-        `&openaiAngle=${encodeURIComponent(anglePair.openaiAngle)}` +
-        `&claudeAngle=${encodeURIComponent(anglePair.claudeAngle)}`
-      const report = await loadHashReport<DynamicLayoutReport>(session, url, requestId, browser, timeoutMs)
-      reports.push({ scenario, anglePair, report })
-      printReport(report, scenario, anglePair)
+  for (let runIndex = 0; runIndex < runs.length; runIndex++) {
+    const run = runs[runIndex]!
+    const requestId =
+      `${Date.now()}-${run.scenario.width}x${run.scenario.height}-${run.anglePair.openaiAngle}:${run.anglePair.claudeAngle}-` +
+      `${Math.random().toString(36).slice(2, 8)}`
+    const url =
+      `${pageServer.baseUrl}/demos/dynamic-layout?report=1` +
+      `&requestId=${encodeURIComponent(requestId)}` +
+      `&pageWidth=${run.scenario.width}` +
+      `&pageHeight=${run.scenario.height}` +
+      `&openaiAngle=${encodeURIComponent(run.anglePair.openaiAngle)}` +
+      `&claudeAngle=${encodeURIComponent(run.anglePair.claudeAngle)}` +
+      (run.showDiagnostics === undefined ? '' : `&showDiagnostics=${run.showDiagnostics ? '1' : '0'}`)
+    const report = await loadHashReport<DynamicLayoutReport>(session, url, requestId, browser, timeoutMs)
+    reports.push({ preset: run.presetKey, scenario: run.scenario, anglePair: run.anglePair, report })
+    printReport(report, run)
 
-      if (report.status === 'error') {
-        process.exitCode = 1
-      }
+    if (report.status === 'error') {
+      process.exitCode = 1
     }
   }
 

@@ -6,6 +6,7 @@ import {
   type LayoutCursor,
   type PreparedTextWithSegments,
 } from '../../src/layout.ts'
+import { EDITORIAL_ENGINE_PROBE_PRESETS, type EditorialEngineProbePreset } from '../probe-presets.ts'
 import { clearNavigationReport, publishNavigationPhase, publishNavigationReport } from '../report-utils.ts'
 
 const BODY_FONT = '18px "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, serif'
@@ -1297,24 +1298,24 @@ function renderProbeRail(): void {
       href: buildPresetHref({}),
       active: pageWidthOverride === null && pageHeightOverride === null && orbPreset === 'default' && animateOrbs,
     },
-    {
-      label: 'Stacked 1365',
-      href: buildPresetHref({ pageWidth: 1365, pageHeight: 900, orbPreset: 'stacked', animate: false, showDiagnostics: true }),
-      active: pageWidthOverride === 1365 && pageHeightOverride === 900 && orbPreset === 'stacked' && !animateOrbs,
-    },
-    {
-      label: 'Diagonal 960',
-      href: buildPresetHref({ pageWidth: 960, pageHeight: 900, orbPreset: 'diagonal', animate: false, showDiagnostics: true }),
-      active: pageWidthOverride === 960 && pageHeightOverride === 900 && orbPreset === 'diagonal' && !animateOrbs,
-    },
-    {
-      label: 'Corridor 640',
-      href: buildPresetHref({ pageWidth: 640, pageHeight: 900, orbPreset: 'corridor', animate: false, showDiagnostics: true }),
-      active: pageWidthOverride === 640 && pageHeightOverride === 900 && orbPreset === 'corridor' && !animateOrbs,
-    },
+    ...EDITORIAL_ENGINE_PROBE_PRESETS.map(preset => ({
+      label: preset.label,
+      href: buildPresetHref(preset),
+      active: isProbePresetActive(preset),
+    })),
   ]
 
   domCache.probeRail.replaceChildren(...presets.map(createProbeLink))
+}
+
+function isProbePresetActive(preset: EditorialEngineProbePreset): boolean {
+  return (
+    pageWidthOverride === preset.pageWidth &&
+    pageHeightOverride === preset.pageHeight &&
+    orbPreset === preset.orbPreset &&
+    animateOrbs === preset.animate &&
+    showDiagnostics === preset.showDiagnostics
+  )
 }
 
 function createProbeLink(definition: { label: string; href: string; active: boolean }): HTMLAnchorElement {

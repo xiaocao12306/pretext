@@ -34,6 +34,12 @@ bun run gatsby-sweep         # coarse Gatsby width sweep
 bun run justification-check  # justification demo summary probe
 ```
 
+Probe examples:
+- `bun run dynamic-layout-check --presets=spread-1365,angle-pair`
+- `bun run editorial-engine-check --presets=stacked-1365,corridor-640`
+- `bun run emoji-check --presets=tight,dense`
+- `bun run justification-check --presets=probe-364,wide-520`
+
 Packaging notes:
 - The published package entrypoint is built into `dist/` and generated at package time; `dist/` stays gitignored.
 - Keep library-internal imports using `.js` specifiers inside `.ts` source so plain `tsc -p tsconfig.build.json` emits correct runtime JS and declarations.

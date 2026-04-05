@@ -62,4 +62,4 @@
 
 ## 当前判断
 - `probe-presets.ts` 是很小的一层抽象，但它把 Phase 3 demo 和 Phase 4 checker 真正焊在了一起
-- 这类共享 preset 词汇后续也值得推广到 `dynamic-layout` / `editorial-engine`，因为它能把场景矩阵从 ad-hoc query 变成 repo 内部可复用的实验语言
+- 这类共享 preset 词汇现在已经继续推广到了 `dynamic-layout` / `editorial-engine`，详见 [[实现-dynamic-layout与editorial共享probe预设矩阵]]

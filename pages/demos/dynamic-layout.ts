@@ -22,6 +22,7 @@ This page's made to show off our layout APIs:
 - There is no DOM text measurement loop feeding layout.
 */
 import { layoutNextLine, prepareWithSegments, walkLineRanges, type LayoutCursor, type PreparedTextWithSegments } from '../../src/layout.ts'
+import { DYNAMIC_LAYOUT_PROBE_PRESETS } from '../probe-presets.ts'
 import { clearNavigationReport, publishNavigationPhase, publishNavigationReport } from '../report-utils.ts'
 import { BODY_COPY } from './dynamic-layout-text.ts'
 import openaiLogoUrl from '../assets/openai-symbol.svg'
@@ -1237,36 +1238,30 @@ function renderProbeRail(): void {
         logoAnimations.openai.angle === 0 &&
         logoAnimations.claude.angle === 0,
     },
-    {
-      label: 'Spread 1365',
-      href: buildProbeHref({ pageWidth: 1365, pageHeight: 900, showDiagnostics: true }),
-      active:
-        pageWidthOverride === 1365 &&
-        pageHeightOverride === 900 &&
-        logoAnimations.openai.angle === 0 &&
-        logoAnimations.claude.angle === 0,
-    },
-    {
-      label: 'Narrow 700',
-      href: buildProbeHref({ pageWidth: 700, pageHeight: 900, showDiagnostics: true }),
-      active:
-        pageWidthOverride === 700 &&
-        pageHeightOverride === 900 &&
-        logoAnimations.openai.angle === 0 &&
-        logoAnimations.claude.angle === 0,
-    },
-    {
-      label: 'Angle pair',
-      href: buildProbeHref({ pageWidth: 1365, pageHeight: 900, openaiAngle: -Math.PI, claudeAngle: Math.PI, showDiagnostics: true }),
-      active:
-        pageWidthOverride === 1365 &&
-        pageHeightOverride === 900 &&
-        Math.abs(logoAnimations.openai.angle + Math.PI) < 0.0005 &&
-        Math.abs(logoAnimations.claude.angle - Math.PI) < 0.0005,
-    },
+    ...DYNAMIC_LAYOUT_PROBE_PRESETS.map(preset => ({
+      label: preset.label,
+      href: buildProbeHref(preset),
+      active: isProbePresetActive(preset),
+    })),
   ]
 
   domCache.probeRail.replaceChildren(...presets.map(createProbeLink))
+}
+
+function isProbePresetActive(preset: {
+  pageWidth: number
+  pageHeight: number
+  openaiAngle: number
+  claudeAngle: number
+  showDiagnostics: boolean
+}): boolean {
+  return (
+    pageWidthOverride === preset.pageWidth &&
+    pageHeightOverride === preset.pageHeight &&
+    showDiagnostics === preset.showDiagnostics &&
+    isAngleMatch(logoAnimations.openai.angle, preset.openaiAngle) &&
+    isAngleMatch(logoAnimations.claude.angle, preset.claudeAngle)
+  )
 }
 
 function createProbeLink(definition: { label: string; href: string; active: boolean }): HTMLAnchorElement {
@@ -1292,6 +1287,10 @@ function buildProbeHref(options: {
   if (options.showDiagnostics !== undefined) next.set('showDiagnostics', options.showDiagnostics ? '1' : '0')
   const query = next.toString()
   return query.length === 0 ? location.pathname : `${location.pathname}?${query}`
+}
+
+function isAngleMatch(actual: number, expected: number): boolean {
+  return Math.abs(actual - expected) < 0.0005
 }
 
 function syncTelemetry(report: DynamicLayoutReport | null): void {
