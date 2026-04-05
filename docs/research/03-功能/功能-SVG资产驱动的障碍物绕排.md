@@ -8,7 +8,7 @@
 - `pages/demos/editorial-engine.ts`
 
 上游：[[模块-demo展示页面]]
-下游：[[实现-SVG资产到wrap-hull投影]]、[[专题-demo作为rich-API狗粮]]
+下游：[[实现-SVG资产到wrap-hull投影]]、[[实现-dynamic-layout报告与资产几何探针链]]、[[专题-demo作为rich-API狗粮]]
 
 ## 功能定位
 这里展示的不是“页面上有 logo 图片”，而是“外部视觉资产可以直接变成文本布局几何约束”。
@@ -54,6 +54,16 @@ Pretext 在这条能力链里扮演的角色不是读 SVG，而是：
 
 因此 SVG 资产只是这个功能的一个输入来源，不是唯一形态。
 
+## 新增的探针能力
+`dynamic-layout` 现在也不再只是“看起来会绕排”的观感 demo。
+
+它已经支持：
+- `/demos/dynamic-layout?report=1&requestId=...`
+- 可选 `openaiAngle` / `claudeAngle`
+- 回传页面尺寸、headline/body line counts、两栏 handoff 是否吃完整段文本、logo hull 点数与当前角度
+
+这让 `pages/assets/*` 首次接进了可脚本回收的摘要报告链，而不再只停留在视觉 dogfooding 层。
+
 ## 对 Pretext API 的要求
 
 这条功能链要求 rich path 满足三件事：
@@ -66,3 +76,4 @@ Pretext 在这条能力链里扮演的角色不是读 SVG，而是：
 ## 当前判断
 - `pages/assets/*` 在这个仓库里已经是“布局几何资产”，不是纯静态资源
 - `dynamic-layout` 是最接近产品级证明的页面：它把 SVG 资产、命中测试、连续正文 handoff、动态 obstacle reflow 串成了同一条链
+- 现在它还多了一层半正式探针能力：可以用 `dynamic-layout-check` 回收资产几何与正文续排摘要，而不是只能肉眼看 logo 绕排

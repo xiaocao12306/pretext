@@ -22,6 +22,7 @@ This page's made to show off our layout APIs:
 - There is no DOM text measurement loop feeding layout.
 */
 import { layoutNextLine, prepareWithSegments, walkLineRanges, type LayoutCursor, type PreparedTextWithSegments } from '../../src/layout.ts'
+import { clearNavigationReport, publishNavigationPhase, publishNavigationReport } from '../report-utils.ts'
 import { BODY_COPY } from './dynamic-layout-text.ts'
 import openaiLogoUrl from '../assets/openai-symbol.svg'
 import claudeLogoUrl from '../assets/claude-symbol.svg'
@@ -71,6 +72,26 @@ type SpinState = {
 type LogoAnimationState = {
   angle: number
   spin: SpinState | null
+}
+
+type EnvironmentFingerprint = {
+  userAgent: string
+  devicePixelRatio: number
+  viewport: {
+    innerWidth: number
+    innerHeight: number
+    outerWidth: number
+    outerHeight: number
+    visualViewportScale: number | null
+  }
+  screen: {
+    width: number
+    height: number
+    availWidth: number
+    availHeight: number
+    colorDepth: number
+    pixelDepth: number
+  }
 }
 
 type PositionedLine = {
@@ -135,6 +156,58 @@ type WrapHulls = {
   claudeHit: Point[]
 }
 
+type DynamicLayoutReport = {
+  status: 'ready' | 'error'
+  requestId?: string
+  environment: EnvironmentFingerprint
+  page: {
+    width: number
+    height: number
+    isNarrow: boolean
+    gutter: number
+    centerGap: number
+    columnWidth: number
+  }
+  typography: {
+    bodyFont: string
+    bodyLineHeight: number
+    headlineFont: string
+    headlineLineHeight: number
+  }
+  headline: {
+    lineCount: number
+    region: Rect
+    rectCount: number
+  }
+  body: {
+    leftLineCount: number
+    rightLineCount: number
+    totalLineCount: number
+    rightColumnUsed: boolean
+    consumedAllText: boolean
+    remainingSegmentIndex: number
+    remainingGraphemeIndex: number
+  }
+  credit: {
+    left: number
+    top: number
+  }
+  logos: {
+    openai: {
+      rect: Rect
+      angle: number
+      layoutHullPoints: number
+      hitHullPoints: number
+    }
+    claude: {
+      rect: Rect
+      angle: number
+      layoutHullPoints: number
+      hitHullPoints: number
+    }
+  }
+}
+
 const stageNode = document.getElementById('stage')
 if (!(stageNode instanceof HTMLDivElement)) throw new Error('#stage not found')
 const stage = stageNode
@@ -152,6 +225,9 @@ type DomCache = {
 }
 
 const preparedByKey = new Map<string, PreparedTextWithSegments>()
+const params = new URLSearchParams(location.search)
+const requestId = params.get('requestId') ?? undefined
+const reportRequested = params.get('report') === '1'
 const scheduled = { value: false }
 const events: { mousemove: MouseEvent | null; click: MouseEvent | null; blur: boolean } = {
   mousemove: null,
@@ -162,9 +238,16 @@ const pointer = { x: -Infinity, y: -Infinity }
 let currentLogoHits!: LogoHits
 let hoveredLogo: LogoKind | null = null
 let committedTextProjection: TextProjection | null = null
+let reportPublished = false
+let lastCommittedReport: DynamicLayoutReport | null = null
 const logoAnimations: { openai: LogoAnimationState; claude: LogoAnimationState } = {
-  openai: { angle: 0, spin: null },
-  claude: { angle: 0, spin: null },
+  openai: { angle: parseAngleParam(params.get('openaiAngle')), spin: null },
+  claude: { angle: parseAngleParam(params.get('claudeAngle')), spin: null },
+}
+
+if (reportRequested) {
+  clearNavigationReport()
+  publishNavigationPhase('loading', requestId)
 }
 
 const domCache: DomCache = {
@@ -219,6 +302,10 @@ const wrapHulls: WrapHulls = { openaiLayout, claudeLayout, openaiHit, claudeHit 
 const preparedBody = getPrepared(BODY_COPY, BODY_FONT)
 const preparedCredit = getPrepared(CREDIT_TEXT, CREDIT_FONT)
 const creditWidth = Math.ceil(getPreparedSingleLineWidth(preparedCredit))
+
+if (reportRequested) {
+  publishNavigationPhase('measuring', requestId)
+}
 
 function getTypography(): { font: string, lineHeight: number } {
   return { font: BODY_FONT, lineHeight: BODY_LINE_HEIGHT }
@@ -677,6 +764,7 @@ function evaluateLayout(
   rightLines: PositionedLine[]
   contentHeight: number
   hits: LogoHits
+  bodyCursor: LayoutCursor
 } {
   const { openaiObstacle, claudeObstacle, hits } = getLogoProjection(layout, lineHeight)
 
@@ -777,6 +865,7 @@ function evaluateLayout(
       rightLines: [],
       contentHeight: layout.pageHeight,
       hits,
+      bodyCursor: bodyResult.cursor,
     }
   }
 
@@ -806,6 +895,7 @@ function evaluateLayout(
     rightLines: rightResult.lines,
     contentHeight: layout.pageHeight,
     hits,
+    bodyCursor: rightResult.cursor,
   }
 }
 
@@ -816,7 +906,7 @@ function commitFrame(now: number): boolean {
   const pageHeight = root.clientHeight
   const animating = updateSpinState(now)
   const layout = buildLayout(pageWidth, pageHeight, lineHeight)
-  const { headlineLines, creditLeft, creditTop, leftLines, rightLines, contentHeight, hits } = evaluateLayout(layout, lineHeight, preparedBody)
+  const { headlineLines, creditLeft, creditTop, leftLines, rightLines, contentHeight, hits, bodyCursor } = evaluateLayout(layout, lineHeight, preparedBody)
 
   currentLogoHits = hits
 
@@ -843,6 +933,18 @@ function commitFrame(now: number): boolean {
     projectTextProjection(textProjection)
     committedTextProjection = textProjection
   }
+
+  lastCommittedReport = buildDynamicLayoutReport(
+    layout,
+    lineHeight,
+    headlineLines,
+    leftLines,
+    rightLines,
+    creditLeft,
+    creditTop,
+    bodyCursor,
+  )
+  maybePublishReport()
 
   document.body.style.cursor = hoveredLogo === null ? '' : 'pointer'
 
@@ -893,6 +995,107 @@ function scheduleRender(): void {
     scheduled.value = false
     if (render(now)) scheduleRender()
   })
+}
+
+function buildDynamicLayoutReport(
+  layout: PageLayout,
+  lineHeight: number,
+  headlineLines: PositionedLine[],
+  leftLines: PositionedLine[],
+  rightLines: PositionedLine[],
+  creditLeft: number,
+  creditTop: number,
+  bodyCursor: LayoutCursor,
+): DynamicLayoutReport {
+  return {
+    status: 'ready',
+    environment: getEnvironmentFingerprint(),
+    page: {
+      width: layout.pageWidth,
+      height: layout.pageHeight,
+      isNarrow: layout.isNarrow,
+      gutter: layout.gutter,
+      centerGap: layout.centerGap,
+      columnWidth: layout.columnWidth,
+    },
+    typography: {
+      bodyFont: BODY_FONT,
+      bodyLineHeight: lineHeight,
+      headlineFont: layout.headlineFont,
+      headlineLineHeight: layout.headlineLineHeight,
+    },
+    headline: {
+      lineCount: headlineLines.length,
+      region: layout.headlineRegion,
+      rectCount: headlineLines.length,
+    },
+    body: {
+      leftLineCount: leftLines.length,
+      rightLineCount: rightLines.length,
+      totalLineCount: leftLines.length + rightLines.length,
+      rightColumnUsed: rightLines.length > 0,
+      consumedAllText: bodyCursor.segmentIndex >= preparedBody.segments.length,
+      remainingSegmentIndex: bodyCursor.segmentIndex,
+      remainingGraphemeIndex: bodyCursor.graphemeIndex,
+    },
+    credit: {
+      left: creditLeft,
+      top: creditTop,
+    },
+    logos: {
+      openai: {
+        rect: layout.openaiRect,
+        angle: Number(logoAnimations.openai.angle.toFixed(6)),
+        layoutHullPoints: wrapHulls.openaiLayout.length,
+        hitHullPoints: wrapHulls.openaiHit.length,
+      },
+      claude: {
+        rect: layout.claudeRect,
+        angle: Number(logoAnimations.claude.angle.toFixed(6)),
+        layoutHullPoints: wrapHulls.claudeLayout.length,
+        hitHullPoints: wrapHulls.claudeHit.length,
+      },
+    },
+  }
+}
+
+function maybePublishReport(): void {
+  if (!reportRequested || reportPublished || lastCommittedReport === null) return
+  reportPublished = true
+  publishNavigationReport(withRequestId(lastCommittedReport))
+}
+
+function parseAngleParam(raw: string | null): number {
+  if (raw === null) return 0
+  const parsed = Number.parseFloat(raw)
+  if (!Number.isFinite(parsed)) return 0
+  return parsed
+}
+
+function withRequestId(report: DynamicLayoutReport): DynamicLayoutReport {
+  return requestId === undefined ? report : { ...report, requestId }
+}
+
+function getEnvironmentFingerprint(): EnvironmentFingerprint {
+  return {
+    userAgent: navigator.userAgent,
+    devicePixelRatio: window.devicePixelRatio,
+    viewport: {
+      innerWidth: window.innerWidth,
+      innerHeight: window.innerHeight,
+      outerWidth: window.outerWidth,
+      outerHeight: window.outerHeight,
+      visualViewportScale: window.visualViewport?.scale ?? null,
+    },
+    screen: {
+      width: window.screen.width,
+      height: window.screen.height,
+      availWidth: window.screen.availWidth,
+      availHeight: window.screen.availHeight,
+      colorDepth: window.screen.colorDepth,
+      pixelDepth: window.screen.pixelDepth,
+    },
+  }
 }
 
 function hasActiveTextSelection(): boolean {

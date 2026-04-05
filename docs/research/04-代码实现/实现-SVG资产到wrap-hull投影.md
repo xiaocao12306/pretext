@@ -7,7 +7,7 @@
 - `pages/demos/dynamic-layout.ts`
 
 上游：[[功能-SVG资产驱动的障碍物绕排]]
-并列参考：[[实现-demo投影循环与几何路由]]
+并列参考：[[实现-demo投影循环与几何路由]]、[[实现-dynamic-layout报告与资产几何探针链]]
 
 ## 这张卡关注什么
 这里专门看 `pages/assets/*` 怎样一步步变成 `dynamic-layout.ts` 可以消费的 obstacle。
@@ -104,3 +104,4 @@
 ## 当前判断
 - 这条实现链很漂亮的一点是：资源解码、轮廓压缩、页面投影、band interval、text slot 被拆成了明确阶段
 - 如果以后还要扩展更多 asset-driven wrap demo，最应复用的不是页面代码，而是这条 asset → hull → interval → slot 的管线
+- `dynamic-layout` 新接入报告与 checker 后，也说明这条管线不只适合视觉演示，还能向自动化脚本暴露稳定摘要信号

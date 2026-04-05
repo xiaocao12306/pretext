@@ -24,6 +24,8 @@ bun run corpus-sweep         # coarse corpus width sweep
 bun run corpus-font-matrix   # same corpus under alternate fonts
 bun run corpus-taxonomy      # classify a corpus mismatch field into steering buckets
 bun run corpus-representative
+bun run dynamic-layout-check # dynamic-layout geometry and streaming-layout probe
+bun run dynamic-layout-check:safari
 bun run emoji-check          # emoji canvas-vs-DOM correction probe
 bun run gatsby-check         # slow detailed Gatsby diagnosis
 bun run gatsby-sweep         # coarse Gatsby width sweep
