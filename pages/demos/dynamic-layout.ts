@@ -243,9 +243,12 @@ const pageNode = document.querySelector('.page')
 if (!(pageNode instanceof HTMLElement)) throw new Error('.page not found')
 const hintNode = document.getElementById('hintPill')
 if (!(hintNode instanceof HTMLParagraphElement)) throw new Error('#hintPill not found')
+const telemetryNode = document.getElementById('telemetryPanel')
+if (!(telemetryNode instanceof HTMLElement)) throw new Error('#telemetryPanel not found')
 
 type DomCache = {
   hint: HTMLParagraphElement // cache lifetime: page
+  telemetry: HTMLElement // cache lifetime: page
   page: HTMLElement // cache lifetime: page
   headline: HTMLHeadingElement // cache lifetime: page
   credit: HTMLParagraphElement // cache lifetime: page
@@ -261,6 +264,7 @@ const requestId = params.get('requestId') ?? undefined
 const reportRequested = params.get('report') === '1'
 const pageWidthOverride = parseDimensionParam(params.get('pageWidth'))
 const pageHeightOverride = parseDimensionParam(params.get('pageHeight'))
+const showDiagnostics = parseBooleanParam(params.get('showDiagnostics')) ?? (pageWidthOverride !== null || pageHeightOverride !== null || reportRequested)
 const scheduled = { value: false }
 const events: { mousemove: MouseEvent | null; click: MouseEvent | null; blur: boolean } = {
   mousemove: null,
@@ -285,6 +289,7 @@ if (reportRequested) {
 
 const domCache: DomCache = {
   hint: hintNode,
+  telemetry: telemetryNode,
   page: pageNode,
   headline: createHeadline(),
   credit: createCredit(),
@@ -1029,6 +1034,7 @@ function commitFrame(now: number): boolean {
     rightRouting,
   )
   maybePublishReport()
+  syncTelemetry(lastCommittedReport)
 
   document.body.style.cursor = hoveredLogo === null ? '' : 'pointer'
 
@@ -1213,8 +1219,41 @@ function syncHint(text: string): void {
   domCache.hint.textContent = text
 }
 
+function syncTelemetry(report: DynamicLayoutReport | null): void {
+  if (!showDiagnostics || report === null) {
+    domCache.telemetry.hidden = true
+    domCache.telemetry.textContent = ''
+    return
+  }
+
+  domCache.telemetry.hidden = false
+  domCache.telemetry.textContent = formatTelemetry(report)
+}
+
 function formatAngle(angle: number): string {
   return `${(angle / Math.PI).toFixed(2)}pi`
+}
+
+function formatTelemetry(report: DynamicLayoutReport): string {
+  const body = report.body
+  const routing = report.routing
+  return [
+    `${report.page.width}x${report.page.height}  ${report.page.isNarrow ? 'narrow' : 'spread'}`,
+    `headline ${report.headline.lineCount}  body ${body.leftLineCount}+${body.rightLineCount}=${body.totalLineCount}`,
+    `credit slots ${routing.creditSlotCount}  picked ${formatNullableWidth(routing.creditSelectedSlotWidth)}`,
+    `left bands ${routing.left.bandCount}  blocked ${routing.left.blockedBandCount}  skipped ${routing.left.skippedBandCount}`,
+    `left slot avg/min/max ${formatNullableWidth(routing.left.avgChosenSlotWidth)} / ${formatNullableWidth(routing.left.minChosenSlotWidth)} / ${formatNullableWidth(routing.left.maxChosenSlotWidth)}`,
+    `right bands ${routing.right.bandCount}  blocked ${routing.right.blockedBandCount}  skipped ${routing.right.skippedBandCount}`,
+    `right slot avg/min/max ${formatNullableWidth(routing.right.avgChosenSlotWidth)} / ${formatNullableWidth(routing.right.minChosenSlotWidth)} / ${formatNullableWidth(routing.right.maxChosenSlotWidth)}`,
+    `openai ${formatAngle(report.logos.openai.angle)}  claude ${formatAngle(report.logos.claude.angle)}`,
+    body.consumedAllText
+      ? 'body cursor complete'
+      : `body cursor ${body.remainingSegmentIndex}:${body.remainingGraphemeIndex}`,
+  ].join('\n')
+}
+
+function formatNullableWidth(value: number | null): string {
+  return value === null ? 'none' : `${value.toFixed(1)}px`
 }
 
 function parseAngleParam(raw: string | null): number {
@@ -1229,6 +1268,13 @@ function parseDimensionParam(raw: string | null): number | null {
   const parsed = Number.parseInt(raw, 10)
   if (!Number.isFinite(parsed) || parsed <= 0) return null
   return parsed
+}
+
+function parseBooleanParam(raw: string | null): boolean | null {
+  if (raw === null) return null
+  if (raw === '1' || raw.toLowerCase() === 'true') return true
+  if (raw === '0' || raw.toLowerCase() === 'false') return false
+  return null
 }
 
 function finalizeRoutingStats(acc: RoutingAccumulator): RoutingStats {

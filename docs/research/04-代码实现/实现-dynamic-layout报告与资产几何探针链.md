@@ -35,6 +35,7 @@
 而且页面本身也不再只把这些参数当“隐藏测试开关”：
 - 当传 `pageWidth/pageHeight` 时，会把 `.page` 收成一个固定 frame
 - hint pill 也会直接显示当前场景尺寸、spread/narrow 状态和两个 logo 角度
+- 还会显示一个 telemetry panel，把 routing / slot 压力直接打到页面右上角
 
 所以这条参数链已经同时服务 automation 和人工复现。
 
