@@ -52,6 +52,18 @@
       background: rgba(0,0,0,0.45); padding: 8px 18px; border-radius: 999px;
       pointer-events: none; white-space: nowrap;
     }
+    .telemetry {
+      position: fixed; top: 16px; right: 16px; z-index: 101;
+      min-width: 260px; max-width: min(360px, calc(100vw - 32px));
+      padding: 12px 14px; border-radius: 16px;
+      background: rgba(7, 8, 12, 0.7); border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 24px 50px rgba(0,0,0,0.28);
+      color: rgba(255,255,255,0.82);
+      font: 500 12px/1.45 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      white-space: pre-wrap; pointer-events: none;
+      backdrop-filter: blur(10px);
+    }
+    .telemetry[hidden] { display: none; }
     .credit {
       position: fixed; right: 16px; bottom: 12px; z-index: 100;
       font: 400 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -68,12 +80,19 @@
       .credit {
         display: none;
       }
+
+      .telemetry {
+        top: auto; right: 12px; bottom: 12px;
+        min-width: 0; max-width: calc(100vw - 24px);
+        font-size: 11px; line-height: 1.4;
+      }
     }
   </style>
 </head>
 <body>
   <div id="stage"></div>
-  <div class="hint">Drag the orbs &middot; Click to pause &middot; Zero DOM reads</div>
+  <div id="hintPill" class="hint">Drag the orbs &middot; Click to pause &middot; Zero DOM reads</div>
+  <pre id="telemetryPanel" class="telemetry" hidden></pre>
   <a class="credit" href="https://x.com/somnai_dreams" target="_blank" rel="noreferrer">Made by @somnai_dreams</a>
 
   <script type="module" src="./editorial-engine.ts"></script>

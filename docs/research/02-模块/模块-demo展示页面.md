@@ -31,7 +31,7 @@
 - `pages/assets/claude-symbol.svg`
 
 上游：[[01-仓库地图]]、[[01-项目总览]]、[[模块-公共API与Prepared模型]]
-下游：[[功能-demo展示链]]、[[实现-demo投影循环与几何路由]]
+下游：[[功能-demo展示链]]、[[功能-editorial-engine交互障碍与多栏续排探针]]、[[实现-demo投影循环与几何路由]]
 
 ## 模块定位
 这一层不是浏览器 ground-truth 校验页，也不是发布包的一部分，而是 Pretext 的 dogfooding 面。
@@ -81,6 +81,7 @@
   - OpenAI / Claude logo 的外轮廓从 SVG alpha 推导而来
   - 文本逐 line band 绕开标题与 logo 几何体
 - `editorial-engine.ts` 进一步把障碍物换成可拖拽、可暂停、持续运动的 orb，并加入 pull quote、drop cap、多列 handoff 与选择态处理。
+- 现在它还接上了 query 参数、telemetry panel 与 `editorial-engine-check`，开始从“互动展示页”过渡到“可批量复现的 orb-routing probe”。
 - `wrap-geometry.ts` 是这类 demo 的共享几何内核：把 SVG 栅格 alpha 变成 normalized wrap hull，再按 band 求 blocked interval，并 carve 出可排版 slot。
 
 这一簇页面说明 Pretext 的 rich path 不是附属功能，而是可以作为“手工文本流系统”的几何内核。
@@ -115,6 +116,7 @@
 - demo 层很好地把 fast path、rich path、用户态 layout engine 三类能力拆开展示了
 - 很多页面都坚持“不用 DOM 测文本高度/换行结果”这个约束，因此有真实 dogfooding 价值
 - `dynamic-layout` / `editorial-engine` 说明 cursor handoff + line slot routing 已经足够支撑连续文本流，而不只是产出一组 `lines[]`
+- `editorial-engine` 新接入 report/checker 后，说明 interaction-driven demo 也能在不变成正式 snapshot 的前提下，先进入“半正式探针”阶段
 
 ### 风险点
 - `editorial-engine.ts` 与 `dynamic-layout.ts` 已经接近“小型应用”，后续若继续扩展，可能需要把共享投影/几何层再抽薄

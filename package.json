@@ -49,6 +49,8 @@
     "corpus-taxonomy": "bun run scripts/corpus-taxonomy.ts",
     "dynamic-layout-check": "bun run scripts/dynamic-layout-check.ts",
     "dynamic-layout-check:safari": "DYNAMIC_LAYOUT_CHECK_BROWSER=safari bun run scripts/dynamic-layout-check.ts",
+    "editorial-engine-check": "bun run scripts/editorial-engine-check.ts",
+    "editorial-engine-check:safari": "EDITORIAL_ENGINE_CHECK_BROWSER=safari bun run scripts/editorial-engine-check.ts",
     "emoji-check": "bun run scripts/emoji-check.ts",
     "emoji-check:safari": "EMOJI_CHECK_BROWSER=safari bun run scripts/emoji-check.ts",
     "gatsby-check": "bun run scripts/gatsby-check.ts",

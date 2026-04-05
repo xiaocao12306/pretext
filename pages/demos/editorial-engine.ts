@@ -6,6 +6,7 @@ import {
   type LayoutCursor,
   type PreparedTextWithSegments,
 } from '../../src/layout.ts'
+import { clearNavigationReport, publishNavigationPhase, publishNavigationReport } from '../report-utils.ts'
 
 const BODY_FONT = '18px "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, serif'
 const BODY_LINE_HEIGHT = 30
@@ -22,6 +23,7 @@ const NARROW_COL_GAP = 20
 const NARROW_BOTTOM_GAP = 16
 const NARROW_ORB_SCALE = 0.58
 const NARROW_ACTIVE_ORBS = 3
+const DEFAULT_HINT_TEXT = 'Drag the orbs · Click to pause · Zero DOM reads'
 
 type Interval = {
   left: number
@@ -96,6 +98,17 @@ type Orb = {
   paused: boolean
 }
 
+type OrbSnapshot = {
+  x: number
+  y: number
+  r: number
+  paused: boolean
+  vx: number
+  vy: number
+}
+
+type OrbPreset = 'default' | 'stacked' | 'diagonal' | 'corridor'
+
 type HeadlineFit = {
   fontSize: number
   lines: PositionedLine[]
@@ -138,6 +151,105 @@ type AppState = {
     pointerUp: PointerSample | null
   }
   lastFrameTime: number | null
+}
+
+type EnvironmentFingerprint = {
+  userAgent: string
+  devicePixelRatio: number
+  viewport: {
+    innerWidth: number
+    innerHeight: number
+    outerWidth: number
+    outerHeight: number
+    visualViewportScale: number | null
+  }
+  screen: {
+    width: number
+    height: number
+    availWidth: number
+    availHeight: number
+    colorDepth: number
+    pixelDepth: number
+  }
+}
+
+type RoutingStats = {
+  bandCount: number
+  blockedBandCount: number
+  skippedBandCount: number
+  candidateSlotCount: number
+  chosenSlotCount: number
+  minChosenSlotWidth: number | null
+  maxChosenSlotWidth: number | null
+  avgChosenSlotWidth: number | null
+}
+
+type RoutingAccumulator = {
+  bandCount: number
+  blockedBandCount: number
+  skippedBandCount: number
+  candidateSlotCount: number
+  chosenSlotCount: number
+  chosenSlotWidthSum: number
+  minChosenSlotWidth: number
+  maxChosenSlotWidth: number
+}
+
+type EditorialEngineReport = {
+  status: 'ready' | 'error'
+  requestId?: string
+  environment: EnvironmentFingerprint
+  page: {
+    width: number
+    height: number
+    isNarrow: boolean
+    gutter: number
+    columnGap: number
+    bottomGap: number
+    columnCount: number
+    columnWidth: number
+    bodyTop: number
+    bodyHeight: number
+    activeOrbCount: number
+    orbRadiusScale: number
+  }
+  headline: {
+    font: string
+    lineHeight: number
+    lineCount: number
+  }
+  body: {
+    lineCount: number
+    columnLineCounts: number[]
+    consumedAllText: boolean
+    remainingSegmentIndex: number
+    remainingGraphemeIndex: number
+  }
+  pullquotes: {
+    count: number
+    totalLineCount: number
+    occupiedColumns: number[]
+  }
+  dropCap: {
+    x: number
+    y: number
+    width: number
+    height: number
+  }
+  routing: RoutingStats
+  orbs: {
+    preset: OrbPreset
+    animated: boolean
+    activeCount: number
+    pausedCount: number
+    bounds: {
+      minX: number
+      maxX: number
+      minY: number
+      maxY: number
+    }
+    snapshots: OrbSnapshot[]
+  }
 }
 
 function getRequiredDiv(id: string): HTMLDivElement {
@@ -249,6 +361,10 @@ const PULLQUOTE_TEXTS = [
 ]
 
 const stage = getRequiredDiv('stage')
+const hintNode = document.getElementById('hintPill')
+if (!(hintNode instanceof HTMLDivElement)) throw new Error('#hintPill not found')
+const telemetryNode = document.getElementById('telemetryPanel')
+if (!(telemetryNode instanceof HTMLPreElement)) throw new Error('#telemetryPanel not found')
 
 const orbDefs: OrbDefinition[] = [
   { fx: 0.52, fy: 0.22, r: 110, vx: 24, vy: 16, color: [196, 163, 90] },
@@ -257,6 +373,20 @@ const orbDefs: OrbDefinition[] = [
   { fx: 0.38, fy: 0.72, r: 75, vx: -26, vy: -14, color: [80, 200, 140] },
   { fx: 0.86, fy: 0.18, r: 65, vx: -13, vy: 19, color: [150, 100, 220] },
 ]
+
+const params = new URLSearchParams(location.search)
+const requestId = params.get('requestId') ?? undefined
+const reportRequested = params.get('report') === '1'
+const pageWidthOverride = parseDimensionParam(params.get('pageWidth'))
+const pageHeightOverride = parseDimensionParam(params.get('pageHeight'))
+const showDiagnostics = parseBooleanParam(params.get('showDiagnostics')) ?? (reportRequested || pageWidthOverride !== null || pageHeightOverride !== null)
+const orbPreset = parseOrbPreset(params.get('orbPreset'))
+const animateOrbs = parseBooleanParam(params.get('animate')) ?? !reportRequested
+
+if (reportRequested) {
+  clearNavigationReport()
+  publishNavigationPhase('loading', requestId)
+}
 
 function createOrbEl(color: OrbColor): HTMLDivElement {
   const element = document.createElement('div')
@@ -267,10 +397,11 @@ function createOrbEl(color: OrbColor): HTMLDivElement {
   return element
 }
 
-const W0 = window.innerWidth
-const H0 = window.innerHeight
+const initialSceneWidth = pageWidthOverride ?? window.innerWidth
+const initialSceneHeight = pageHeightOverride ?? window.innerHeight
 
 await document.fonts.ready
+if (reportRequested) publishNavigationPhase('measuring', requestId)
 
 const preparedBody = prepareWithSegments(BODY_TEXT, BODY_FONT)
 const PQ_FONT = `italic 19px ${HEADLINE_FONT_FAMILY}`
@@ -304,6 +435,8 @@ const pullquoteLinePool: HTMLSpanElement[] = []
 const pullquoteBoxPool: HTMLDivElement[] = []
 const domCache = {
   stage, // cache lifetime: same as page
+  hint: hintNode, // cache lifetime: same as page
+  telemetry: telemetryNode, // cache lifetime: same as page
   dropCap: dropCapEl, // cache lifetime: same as page
   bodyLines: linePool, // cache lifetime: on body line-count changes
   headlineLines: headlinePool, // cache lifetime: on headline line-count changes
@@ -313,14 +446,7 @@ const domCache = {
 }
 
 const st: AppState = {
-  orbs: orbDefs.map(definition => ({
-    x: definition.fx * W0,
-    y: definition.fy * H0,
-    r: definition.r,
-    vx: definition.vx,
-    vy: definition.vy,
-    paused: false,
-  })),
+  orbs: createInitialOrbs(initialSceneWidth, initialSceneHeight, orbPreset, !animateOrbs),
   pointer: { x: -9999, y: -9999 },
   drag: null,
   interactionMode: 'idle',
@@ -334,6 +460,8 @@ const st: AppState = {
 }
 
 let committedTextProjection: TextProjection | null = null
+let reportPublished = false
+let lastCommittedReport: EditorialEngineReport | null = null
 
 function syncPool<T extends HTMLElement>(pool: T[], count: number, create: () => T): void {
   while (pool.length < count) {
@@ -410,13 +538,24 @@ function layoutColumn(
   circleObstacles: CircleObstacle[],
   rectObstacles: RectObstacle[],
   singleSlotOnly: boolean = false,
-): { lines: PositionedLine[], cursor: LayoutCursor } {
+): { lines: PositionedLine[], cursor: LayoutCursor, stats: RoutingStats } {
   let cursor: LayoutCursor = startCursor
   let lineTop = regionY
   const lines: PositionedLine[] = []
   let textExhausted = false
+  const stats: RoutingAccumulator = {
+    bandCount: 0,
+    blockedBandCount: 0,
+    skippedBandCount: 0,
+    candidateSlotCount: 0,
+    chosenSlotCount: 0,
+    chosenSlotWidthSum: 0,
+    minChosenSlotWidth: Infinity,
+    maxChosenSlotWidth: 0,
+  }
 
   while (lineTop + lineHeight <= regionY + regionH && !textExhausted) {
+    stats.bandCount++
     const bandTop = lineTop
     const bandBottom = lineTop + lineHeight
     const blocked: Interval[] = []
@@ -440,9 +579,12 @@ function layoutColumn(
       if (bandBottom <= rect.y || bandTop >= rect.y + rect.h) continue
       blocked.push({ left: rect.x, right: rect.x + rect.w })
     }
+    if (blocked.length > 0) stats.blockedBandCount++
 
     const slots = carveTextLineSlots({ left: regionX, right: regionX + regionW }, blocked)
+    stats.candidateSlotCount += slots.length
     if (slots.length === 0) {
+      stats.skippedBandCount++
       lineTop += lineHeight
       continue
     }
@@ -465,6 +607,10 @@ function layoutColumn(
         textExhausted = true
         break
       }
+      stats.chosenSlotCount++
+      stats.chosenSlotWidthSum += slotWidth
+      if (slotWidth < stats.minChosenSlotWidth) stats.minChosenSlotWidth = slotWidth
+      if (slotWidth > stats.maxChosenSlotWidth) stats.maxChosenSlotWidth = slotWidth
       lines.push({
         x: Math.round(slot.left),
         y: Math.round(lineTop),
@@ -477,7 +623,7 @@ function layoutColumn(
     lineTop += lineHeight
   }
 
-  return { lines, cursor }
+  return { lines, cursor, stats: finalizeRoutingStats(stats) }
 }
 
 function hitTestOrbs(orbs: Orb[], px: number, py: number, activeCount: number, radiusScale: number): number {
@@ -626,8 +772,9 @@ stage.addEventListener('pointerdown', event => {
     return
   }
 
-  const activeOrbCount = window.innerWidth < NARROW_BREAKPOINT ? NARROW_ACTIVE_ORBS : st.orbs.length
-  const radiusScale = window.innerWidth < NARROW_BREAKPOINT ? NARROW_ORB_SCALE : 1
+  const sceneWidth = pageWidthOverride ?? document.documentElement.clientWidth
+  const activeOrbCount = sceneWidth < NARROW_BREAKPOINT ? NARROW_ACTIVE_ORBS : st.orbs.length
+  const radiusScale = sceneWidth < NARROW_BREAKPOINT ? NARROW_ORB_SCALE : 1
   const hitOrbIndex = hitTestOrbs(st.orbs, event.clientX, event.clientY, activeOrbCount, radiusScale)
   if (hitOrbIndex !== -1) {
     event.preventDefault()
@@ -677,8 +824,8 @@ function render(now: number): boolean {
     return false
   }
 
-  const pageWidth = document.documentElement.clientWidth
-  const pageHeight = document.documentElement.clientHeight
+  const pageWidth = pageWidthOverride ?? document.documentElement.clientWidth
+  const pageHeight = pageHeightOverride ?? document.documentElement.clientHeight
   const isNarrow = pageWidth < NARROW_BREAKPOINT
   const gutter = isNarrow ? NARROW_GUTTER : GUTTER
   const colGap = isNarrow ? NARROW_COL_GAP : COL_GAP
@@ -861,6 +1008,8 @@ function render(now: number): boolean {
   }
 
   const allBodyLines: PositionedLine[] = []
+  const columnLineCounts: number[] = []
+  const columnRoutingStats: RoutingStats[] = []
   let cursor: LayoutCursor = { segmentIndex: 0, graphemeIndex: 1 }
   for (let columnIndex = 0; columnIndex < columnCount; columnIndex++) {
     const columnX = contentLeft + columnIndex * (columnWidth + colGap)
@@ -885,6 +1034,8 @@ function render(now: number): boolean {
       isNarrow,
     )
     allBodyLines.push(...result.lines)
+    columnLineCounts.push(result.lines.length)
+    columnRoutingStats.push(result.stats)
     cursor = result.cursor
   }
 
@@ -906,6 +1057,7 @@ function render(now: number): boolean {
   st.events.pointerUp = null
   st.lastFrameTime = stillAnimating ? now : null
 
+  applyScenarioFrame(pageWidth, pageHeight)
   const textProjection: TextProjection = {
     headlineLeft: gutter,
     headlineTop: gutter,
@@ -962,7 +1114,397 @@ function render(now: number): boolean {
   domCache.stage.style.userSelect = drag !== null ? 'none' : ''
   domCache.stage.style.webkitUserSelect = drag !== null ? 'none' : ''
   document.body.style.cursor = cursorStyle
+
+  lastCommittedReport = buildEditorialEngineReport(
+    pageWidth,
+    pageHeight,
+    isNarrow,
+    gutter,
+    colGap,
+    bottomGap,
+    columnCount,
+    columnWidth,
+    bodyTop,
+    bodyHeight,
+    activeOrbCount,
+    orbRadiusScale,
+    headlineFont,
+    headlineLineHeight,
+    headlineLines.length,
+    cursor,
+    columnLineCounts,
+    pullquoteRects,
+    dropCapRect,
+    combineRoutingStats(columnRoutingStats),
+    orbs,
+  )
+  syncHint(copyHintText(pageWidth, pageHeight, columnCount, activeOrbCount))
+  syncTelemetry(lastCommittedReport)
+  maybePublishReport(lastCommittedReport)
   return stillAnimating
+}
+
+function buildEditorialEngineReport(
+  pageWidth: number,
+  pageHeight: number,
+  isNarrow: boolean,
+  gutter: number,
+  columnGap: number,
+  bottomGap: number,
+  columnCount: number,
+  columnWidth: number,
+  bodyTop: number,
+  bodyHeight: number,
+  activeOrbCount: number,
+  orbRadiusScale: number,
+  headlineFont: string,
+  headlineLineHeight: number,
+  headlineLineCount: number,
+  cursor: LayoutCursor,
+  columnLineCounts: number[],
+  pullquoteRects: PullquoteRect[],
+  dropCapRect: RectObstacle,
+  routing: RoutingStats,
+  orbs: Orb[],
+): EditorialEngineReport {
+  const activeOrbs = orbs.slice(0, activeOrbCount)
+  const snapshots = activeOrbs.map(orb => ({
+    x: Number(orb.x.toFixed(3)),
+    y: Number(orb.y.toFixed(3)),
+    r: Number((orb.r * orbRadiusScale).toFixed(3)),
+    paused: orb.paused,
+    vx: Number(orb.vx.toFixed(3)),
+    vy: Number(orb.vy.toFixed(3)),
+  }))
+  const bounds = getOrbBounds(snapshots)
+
+  return {
+    status: 'ready',
+    environment: getEnvironmentFingerprint(),
+    page: {
+      width: pageWidth,
+      height: pageHeight,
+      isNarrow,
+      gutter,
+      columnGap,
+      bottomGap,
+      columnCount,
+      columnWidth,
+      bodyTop,
+      bodyHeight,
+      activeOrbCount,
+      orbRadiusScale: Number(orbRadiusScale.toFixed(3)),
+    },
+    headline: {
+      font: headlineFont,
+      lineHeight: headlineLineHeight,
+      lineCount: headlineLineCount,
+    },
+    body: {
+      lineCount: columnLineCounts.reduce((sum, count) => sum + count, 0),
+      columnLineCounts,
+      consumedAllText: cursor.segmentIndex >= preparedBody.segments.length,
+      remainingSegmentIndex: cursor.segmentIndex,
+      remainingGraphemeIndex: cursor.graphemeIndex,
+    },
+    pullquotes: {
+      count: pullquoteRects.length,
+      totalLineCount: pullquoteRects.reduce((sum, rect) => sum + rect.lines.length, 0),
+      occupiedColumns: pullquoteRects.map(rect => rect.colIdx),
+    },
+    dropCap: {
+      x: dropCapRect.x,
+      y: dropCapRect.y,
+      width: dropCapRect.w,
+      height: dropCapRect.h,
+    },
+    routing,
+    orbs: {
+      preset: orbPreset,
+      animated: animateOrbs,
+      activeCount: activeOrbCount,
+      pausedCount: activeOrbs.filter(orb => orb.paused).length,
+      bounds,
+      snapshots,
+    },
+  }
+}
+
+function maybePublishReport(report: EditorialEngineReport): void {
+  if (!reportRequested || reportPublished) return
+  reportPublished = true
+  publishNavigationReport(withRequestId(report))
+}
+
+function applyScenarioFrame(pageWidth: number, pageHeight: number): void {
+  const isFramed = pageWidthOverride !== null || pageHeightOverride !== null
+  if (!isFramed) {
+    document.body.style.overflow = 'hidden'
+    document.body.style.padding = ''
+    domCache.stage.style.width = ''
+    domCache.stage.style.height = ''
+    domCache.stage.style.margin = ''
+    domCache.stage.style.borderRadius = ''
+    domCache.stage.style.border = ''
+    domCache.stage.style.boxShadow = ''
+    return
+  }
+
+  document.body.style.overflow = 'auto'
+  document.body.style.padding = '0'
+  domCache.stage.style.width = `${pageWidth}px`
+  domCache.stage.style.height = `${pageHeight}px`
+  domCache.stage.style.margin = '0'
+  domCache.stage.style.borderRadius = '24px'
+  domCache.stage.style.border = '1px solid rgba(255,255,255,0.06)'
+  domCache.stage.style.boxShadow = '0 24px 60px rgba(0,0,0,0.28)'
+}
+
+function copyHintText(pageWidth: number, pageHeight: number, columnCount: number, activeOrbCount: number): string {
+  if (
+    pageWidthOverride === null &&
+    pageHeightOverride === null &&
+    orbPreset === 'default' &&
+    animateOrbs &&
+    !showDiagnostics
+  ) {
+    return DEFAULT_HINT_TEXT
+  }
+
+  const parts = [
+    `${pageWidth}x${pageHeight}`,
+    `${columnCount}col`,
+    `${activeOrbCount} orbs`,
+    orbPreset,
+    animateOrbs ? 'live' : 'paused',
+  ]
+  return parts.join(' • ')
+}
+
+function syncHint(text: string): void {
+  domCache.hint.textContent = text
+}
+
+function syncTelemetry(report: EditorialEngineReport | null): void {
+  if (!showDiagnostics || report === null) {
+    domCache.telemetry.hidden = true
+    domCache.telemetry.textContent = ''
+    return
+  }
+
+  domCache.telemetry.hidden = false
+  domCache.telemetry.textContent = formatTelemetry(report)
+}
+
+function formatTelemetry(report: EditorialEngineReport): string {
+  const body = report.body
+  const routing = report.routing
+  const columns = body.columnLineCounts.map((count, index) => `${index}:${count}`).join(' ')
+  return [
+    `${report.page.width}x${report.page.height}  ${report.page.columnCount}col  ${report.page.isNarrow ? 'narrow' : 'spread'}`,
+    `headline ${report.headline.lineCount}  body ${body.lineCount}  columns ${columns || 'none'}`,
+    `pullquotes ${report.pullquotes.count}/${report.pullquotes.totalLineCount}  drop-cap ${report.dropCap.width}x${report.dropCap.height}`,
+    `routing bands ${routing.bandCount} blocked ${routing.blockedBandCount} skipped ${routing.skippedBandCount}`,
+    `routing slots avg/min/max ${formatNullableWidth(routing.avgChosenSlotWidth)} / ${formatNullableWidth(routing.minChosenSlotWidth)} / ${formatNullableWidth(routing.maxChosenSlotWidth)}`,
+    `orbs ${report.orbs.preset} ${report.orbs.activeCount} active ${report.orbs.pausedCount} paused ${report.orbs.animated ? 'live' : 'frozen'}`,
+    `orb bounds x ${report.orbs.bounds.minX.toFixed(1)}..${report.orbs.bounds.maxX.toFixed(1)} y ${report.orbs.bounds.minY.toFixed(1)}..${report.orbs.bounds.maxY.toFixed(1)}`,
+    body.consumedAllText
+      ? 'body cursor complete'
+      : `body cursor ${body.remainingSegmentIndex}:${body.remainingGraphemeIndex}`,
+  ].join('\n')
+}
+
+function formatNullableWidth(value: number | null): string {
+  return value === null ? 'none' : `${value.toFixed(1)}px`
+}
+
+function combineRoutingStats(stats: RoutingStats[]): RoutingStats {
+  if (stats.length === 0) return emptyRoutingStats()
+
+  let bandCount = 0
+  let blockedBandCount = 0
+  let skippedBandCount = 0
+  let candidateSlotCount = 0
+  let chosenSlotCount = 0
+  let chosenSlotWidthSum = 0
+  let minChosenSlotWidth = Infinity
+  let maxChosenSlotWidth = 0
+
+  for (let index = 0; index < stats.length; index++) {
+    const stat = stats[index]!
+    bandCount += stat.bandCount
+    blockedBandCount += stat.blockedBandCount
+    skippedBandCount += stat.skippedBandCount
+    candidateSlotCount += stat.candidateSlotCount
+    chosenSlotCount += stat.chosenSlotCount
+    if (stat.avgChosenSlotWidth !== null) chosenSlotWidthSum += stat.avgChosenSlotWidth * stat.chosenSlotCount
+    if (stat.minChosenSlotWidth !== null && stat.minChosenSlotWidth < minChosenSlotWidth) {
+      minChosenSlotWidth = stat.minChosenSlotWidth
+    }
+    if (stat.maxChosenSlotWidth !== null && stat.maxChosenSlotWidth > maxChosenSlotWidth) {
+      maxChosenSlotWidth = stat.maxChosenSlotWidth
+    }
+  }
+
+  return {
+    bandCount,
+    blockedBandCount,
+    skippedBandCount,
+    candidateSlotCount,
+    chosenSlotCount,
+    minChosenSlotWidth: chosenSlotCount === 0 ? null : Number(minChosenSlotWidth.toFixed(3)),
+    maxChosenSlotWidth: chosenSlotCount === 0 ? null : Number(maxChosenSlotWidth.toFixed(3)),
+    avgChosenSlotWidth: chosenSlotCount === 0 ? null : Number((chosenSlotWidthSum / chosenSlotCount).toFixed(3)),
+  }
+}
+
+function emptyRoutingStats(): RoutingStats {
+  return {
+    bandCount: 0,
+    blockedBandCount: 0,
+    skippedBandCount: 0,
+    candidateSlotCount: 0,
+    chosenSlotCount: 0,
+    minChosenSlotWidth: null,
+    maxChosenSlotWidth: null,
+    avgChosenSlotWidth: null,
+  }
+}
+
+function finalizeRoutingStats(acc: RoutingAccumulator): RoutingStats {
+  return {
+    bandCount: acc.bandCount,
+    blockedBandCount: acc.blockedBandCount,
+    skippedBandCount: acc.skippedBandCount,
+    candidateSlotCount: acc.candidateSlotCount,
+    chosenSlotCount: acc.chosenSlotCount,
+    minChosenSlotWidth: acc.chosenSlotCount === 0 ? null : Number(acc.minChosenSlotWidth.toFixed(3)),
+    maxChosenSlotWidth: acc.chosenSlotCount === 0 ? null : Number(acc.maxChosenSlotWidth.toFixed(3)),
+    avgChosenSlotWidth: acc.chosenSlotCount === 0
+      ? null
+      : Number((acc.chosenSlotWidthSum / acc.chosenSlotCount).toFixed(3)),
+  }
+}
+
+function getOrbBounds(orbs: OrbSnapshot[]): { minX: number; maxX: number; minY: number; maxY: number } {
+  if (orbs.length === 0) {
+    return { minX: 0, maxX: 0, minY: 0, maxY: 0 }
+  }
+
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+  for (let index = 0; index < orbs.length; index++) {
+    const orb = orbs[index]!
+    minX = Math.min(minX, orb.x - orb.r)
+    maxX = Math.max(maxX, orb.x + orb.r)
+    minY = Math.min(minY, orb.y - orb.r)
+    maxY = Math.max(maxY, orb.y + orb.r)
+  }
+  return {
+    minX: Number(minX.toFixed(3)),
+    maxX: Number(maxX.toFixed(3)),
+    minY: Number(minY.toFixed(3)),
+    maxY: Number(maxY.toFixed(3)),
+  }
+}
+
+function createInitialOrbs(sceneWidth: number, sceneHeight: number, preset: OrbPreset, paused: boolean): Orb[] {
+  const positions = getOrbPresetPositions(preset)
+  return orbDefs.map((definition, index) => {
+    const position = positions[index] ?? { fx: definition.fx, fy: definition.fy }
+    return {
+      x: position.fx * sceneWidth,
+      y: position.fy * sceneHeight,
+      r: definition.r,
+      vx: definition.vx,
+      vy: definition.vy,
+      paused,
+    }
+  })
+}
+
+function getOrbPresetPositions(preset: OrbPreset): Array<{ fx: number; fy: number }> {
+  switch (preset) {
+    case 'stacked':
+      return [
+        { fx: 0.27, fy: 0.16 },
+        { fx: 0.34, fy: 0.35 },
+        { fx: 0.29, fy: 0.57 },
+        { fx: 0.37, fy: 0.78 },
+        { fx: 0.49, fy: 0.28 },
+      ]
+    case 'diagonal':
+      return [
+        { fx: 0.16, fy: 0.18 },
+        { fx: 0.34, fy: 0.34 },
+        { fx: 0.52, fy: 0.5 },
+        { fx: 0.7, fy: 0.66 },
+        { fx: 0.86, fy: 0.82 },
+      ]
+    case 'corridor':
+      return [
+        { fx: 0.22, fy: 0.28 },
+        { fx: 0.45, fy: 0.18 },
+        { fx: 0.55, fy: 0.48 },
+        { fx: 0.72, fy: 0.7 },
+        { fx: 0.84, fy: 0.32 },
+      ]
+    case 'default':
+      return orbDefs.map(definition => ({ fx: definition.fx, fy: definition.fy }))
+  }
+}
+
+function parseDimensionParam(raw: string | null): number | null {
+  if (raw === null) return null
+  const parsed = Number.parseInt(raw, 10)
+  if (!Number.isFinite(parsed) || parsed <= 0) return null
+  return parsed
+}
+
+function parseBooleanParam(raw: string | null): boolean | null {
+  if (raw === null) return null
+  if (raw === '1' || raw.toLowerCase() === 'true') return true
+  if (raw === '0' || raw.toLowerCase() === 'false') return false
+  return null
+}
+
+function parseOrbPreset(raw: string | null): OrbPreset {
+  switch (raw) {
+    case 'stacked':
+    case 'diagonal':
+    case 'corridor':
+      return raw
+    default:
+      return 'default'
+  }
+}
+
+function withRequestId(report: EditorialEngineReport): EditorialEngineReport {
+  return requestId === undefined ? report : { ...report, requestId }
+}
+
+function getEnvironmentFingerprint(): EnvironmentFingerprint {
+  return {
+    userAgent: navigator.userAgent,
+    devicePixelRatio: window.devicePixelRatio,
+    viewport: {
+      innerWidth: window.innerWidth,
+      innerHeight: window.innerHeight,
+      outerWidth: window.outerWidth,
+      outerHeight: window.outerHeight,
+      visualViewportScale: window.visualViewport?.scale ?? null,
+    },
+    screen: {
+      width: window.screen.width,
+      height: window.screen.height,
+      availWidth: window.screen.availWidth,
+      availHeight: window.screen.availHeight,
+      colorDepth: window.screen.colorDepth,
+      pixelDepth: window.screen.pixelDepth,
+    },
+  }
 }
 
 scheduleRender()

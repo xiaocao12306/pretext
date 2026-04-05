@@ -26,6 +26,8 @@ bun run corpus-taxonomy      # classify a corpus mismatch field into steering bu
 bun run corpus-representative
 bun run dynamic-layout-check # dynamic-layout geometry and streaming-layout probe
 bun run dynamic-layout-check:safari
+bun run editorial-engine-check # editorial-engine orb-routing and multicolumn probe
+bun run editorial-engine-check:safari
 bun run emoji-check          # emoji canvas-vs-DOM correction probe
 bun run gatsby-check         # slow detailed Gatsby diagnosis
 bun run gatsby-sweep         # coarse Gatsby width sweep
@@ -42,6 +44,7 @@ Useful pages:
 - `/demos/accordion`
 - `/demos/bubbles`
 - `/demos/dynamic-layout`
+- `/demos/editorial-engine`
 - `/demos/justification-comparison`
 - `/emoji-test`
 - `/accuracy`

@@ -1,6 +1,6 @@
 # 专题：研究型 demo 与 engine 假设外显
 
-相关节点：[[模块-demo展示页面]]、[[功能-段落算法对比与river可视化]]、[[功能-emoji校正探针与自动化校验]]、[[实现-SVG资产到wrap-hull投影]]、[[实现-emoji-test报告与checker链]]、[[实现-justification-demo报告与checker链]]
+相关节点：[[模块-demo展示页面]]、[[功能-段落算法对比与river可视化]]、[[功能-emoji校正探针与自动化校验]]、[[功能-editorial-engine交互障碍与多栏续排探针]]、[[实现-SVG资产到wrap-hull投影]]、[[实现-emoji-test报告与checker链]]、[[实现-justification-demo报告与checker链]]、[[实现-editorial-engine报告与orb场景checker链]]
 
 ## 主题结论
 Pretext 的 demo 里有一类页面不是“产品效果展示”，而是把核心引擎里的假设直接外显出来，变成可以观察、比较、质疑的研究台。
@@ -8,6 +8,9 @@ Pretext 的 demo 里有一类页面不是“产品效果展示”，而是把核
 当前最典型的是两类：
 - `pages/demos/justification-comparison.*`
 - `pages/emoji-test.html`
+
+最近又多了一类：
+- `pages/demos/editorial-engine.*`
 
 ## 1. `justification-comparison` 外显的是段落级假设
 
@@ -59,6 +62,11 @@ Pretext 的 demo 里有一类页面不是“产品效果展示”，而是把核
 - emoji correction 不是凭感觉加的 magic number
 - 它有明确的 DOM/canvas 对比探针来源
 
+`editorial-engine` 则把另一类假设外显出来：
+- line slot carving 在时变障碍物前是否还能稳定工作
+- 多列 handoff 在 orb / pullquote / drop-cap 混合干扰下是否仍能维持连续正文流
+- demo 内部的 routing 压力是否能被量化，而不是只靠肉眼看动画
+
 ## 4. 研究型 demo 的边界
 
 它们也有明确局限：
@@ -71,4 +79,5 @@ Pretext 的 demo 里有一类页面不是“产品效果展示”，而是把核
 ## 当前判断
 - `pages/emoji-test.html` 和 `justification-comparison` 最值得保留的不是页面本身，而是这种“把 engine 假设外显到浏览器里”的研究方法
 - `emoji-test` 新接入 checker 后，更像“研究页到半正式守护”的过渡样板：先把假设做成浏览器探针，再决定是否值得升级成长期资产
+- `editorial-engine` 则把这个模式再往前推了一步：连 interaction-driven demo 也能冻结首帧、导出摘要，再进入脚本矩阵
 - 未来再加研究页时，应该继续遵守这个边界：先当探针，再决定是否升级成正式校验资产
