@@ -67,3 +67,4 @@
 - `pages/demos/index.html` 正在从“案例目录”升级成“研究型 demo 控制台”
 - root alias + query-preserving rewrite 这条链补上后，`editorial-engine`、`justification-comparison`、`emoji-test` 的 probe 场景终于能同时在 dev server 和静态站点上稳定分享
 - 这类入口级工作很容易被误判成 UI 小修，但它实际上是 demo 页面和 checker 脚本闭环的一部分
+- landing 层随后又继续接上了共享 preset 资产，详见 [[实现-demo-landing共享preset入口矩阵]]

@@ -136,12 +136,12 @@
     </p>
 
     <section class="grid" aria-label="Demo list">
-      <a class="card" href="/demos/accordion">
+      <a class="card" href="./accordion">
         <h2>Accordion</h2>
         <p>Expand and collapse sections whose text heights are calculated from Pretext.</p>
       </a>
 
-      <a class="card" href="/demos/bubbles">
+      <a class="card" href="./bubbles">
         <h2>Bubbles</h2>
         <p>Tight multiline message bubbles that keep the same line count with less wasted area.</p>
       </a>
@@ -153,14 +153,10 @@
           <span class="tag">asset wrap</span>
           <span class="tag">probe-ready</span>
         </div>
-        <div class="actions">
-          <a class="action" href="/dynamic-layout">Live demo</a>
-          <a class="action" href="/dynamic-layout?pageWidth=1365&amp;pageHeight=900&amp;showDiagnostics=1">Spread probe</a>
-          <a class="action" href="/dynamic-layout?pageWidth=700&amp;pageHeight=900&amp;showDiagnostics=1">Narrow probe</a>
-        </div>
+        <div class="actions" id="dynamicLayoutActions"></div>
       </article>
 
-      <a class="card" href="/demos/variable-typographic-ascii">
+      <a class="card" href="./variable-typographic-ascii">
         <h2>Variable Typographic ASCII</h2>
         <p>Particle-driven ASCII art comparing proportional measured glyphs against a monospace version.</p>
       </a>
@@ -172,11 +168,7 @@
           <span class="tag">interactive</span>
           <span class="tag">probe-ready</span>
         </div>
-        <div class="actions">
-          <a class="action" href="/editorial-engine">Live demo</a>
-          <a class="action" href="/editorial-engine?pageWidth=1365&amp;pageHeight=900&amp;orbPreset=stacked&amp;animate=0&amp;showDiagnostics=1">Stacked probe</a>
-          <a class="action" href="/editorial-engine?pageWidth=640&amp;pageHeight=900&amp;orbPreset=corridor&amp;animate=0&amp;showDiagnostics=1">Narrow probe</a>
-        </div>
+        <div class="actions" id="editorialEngineActions"></div>
       </article>
 
       <article class="card">
@@ -186,19 +178,15 @@
           <span class="tag">paragraph</span>
           <span class="tag">probe-ready</span>
         </div>
-        <div class="actions">
-          <a class="action" href="/justification-comparison">Live demo</a>
-          <a class="action" href="/justification-comparison?width=364&amp;showIndicators=0">Probe width 364</a>
-          <a class="action" href="/justification-comparison?width=520&amp;showIndicators=0">Probe width 520</a>
-        </div>
+        <div class="actions" id="justificationActions"></div>
       </article>
 
-      <a class="card" href="/demos/rich-note">
+      <a class="card" href="./rich-note">
         <h2>Rich Text</h2>
         <p>Rich inline text, code spans, links, and chips laid out together, with pills staying whole while text keeps wrapping naturally.</p>
       </a>
 
-      <a class="card" href="/demos/masonry">
+      <a class="card" href="./masonry">
         <h2>Masonry</h2>
         <p>A text-card occlusion demo where height prediction comes from Pretext instead of DOM reads.</p>
       </a>
@@ -210,13 +198,10 @@
           <span class="tag">measurement</span>
           <span class="tag">probe-ready</span>
         </div>
-        <div class="actions">
-          <a class="action" href="/emoji-test">Default sweep</a>
-          <a class="action" href="/emoji-test?sizes=12,16,24,32&amp;threshold=0.5">Tight threshold</a>
-          <a class="action" href="/emoji-test?sizes=10,14,18,24,32&amp;threshold=1">Coarse sweep</a>
-        </div>
+        <div class="actions" id="emojiActions"></div>
       </article>
     </section>
   </main>
+  <script type="module" src="./index.ts"></script>
 </body>
 </html>

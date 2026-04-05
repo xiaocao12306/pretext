@@ -2,6 +2,7 @@
 
 相关文件：
 - `pages/demos/index.html`
+- `pages/demos/index.ts`
 - `pages/demos/accordion.html`
 - `pages/demos/accordion.ts`
 - `pages/demos/bubbles.html`
@@ -48,7 +49,7 @@
 ## 页面簇分工
 
 ### 1. Demo 入口与兼容别名
-- `pages/demos/index.html` 是静态 landing page，按能力类型组织 demo 卡片。
+- `pages/demos/index.html` 现在和 `pages/demos/index.ts` 配合：HTML 提供卡片骨架，TS 再把共享 preset 词汇挂成 action rail。
 - `pages/justification-comparison.html` 只是一个顶层 redirect，真正内容在 `/demos/justification-comparison`。
 - `pages/dynamic-layout.html` 现在也补上了同类 root alias，把 `/dynamic-layout` 收束到 `/demos/dynamic-layout`，并保留 query/hash。
 - `pages/editorial-engine.html` 现在也补上了同类 root alias，把 `/editorial-engine` 收束到 `/demos/editorial-engine`，并保留 query/hash。
@@ -121,6 +122,7 @@
 - 很多页面都坚持“不用 DOM 测文本高度/换行结果”这个约束，因此有真实 dogfooding 价值
 - `dynamic-layout` / `editorial-engine` 说明 cursor handoff + line slot routing 已经足够支撑连续文本流，而不只是产出一组 `lines[]`
 - `editorial-engine` 新接入 report/checker 后，说明 interaction-driven demo 也能在不变成正式 snapshot 的前提下，先进入“半正式探针”阶段
+- landing page 也不再只是静态卡片目录，而开始直接消费共享 preset 词汇，把 measurement / paragraph / rich-demo 这三类探针矩阵一起公开出来
 
 ### 风险点
 - `editorial-engine.ts` 与 `dynamic-layout.ts` 已经接近“小型应用”，后续若继续扩展，可能需要把共享投影/几何层再抽薄
