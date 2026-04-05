@@ -25,6 +25,28 @@
       display: flex; align-items: center; gap: 16px;
       margin-bottom: 24px; flex-wrap: wrap; justify-content: center;
     }
+    .probe-rail {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      justify-content: center;
+      margin: 0 0 18px;
+    }
+    .probe-link {
+      display: inline-flex; align-items: center; min-height: 30px;
+      padding: 0 12px; border-radius: 999px;
+      border: 1px solid #ddd4c8; background: #f5f2ed;
+      color: #5a4f40; text-decoration: none;
+      font: 600 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      white-space: nowrap;
+    }
+    .probe-link:hover {
+      border-color: #bcae9a;
+      background: #f1ece5;
+    }
+    .probe-link.is-active {
+      background: #ece2d5;
+      border-color: #9e876c;
+      color: #473b2d;
+    }
     .controls label {
       font: 500 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
       color: #8a7f70; text-transform: uppercase; letter-spacing: 0.5px;
@@ -130,6 +152,8 @@
   <div class="page">
     <h1 style="text-align:center">Justification Algorithms Compared</h1>
     <p class="subtitle" style="text-align:center">Visualizes typography rivers, spacing variance, and how hyphenation and global line-breaking change justified text.</p>
+
+    <nav id="probeRail" class="probe-rail" aria-label="Justification probe presets"></nav>
 
     <div class="controls">
       <label for="widthSlider">Column width</label>

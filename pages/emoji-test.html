@@ -18,6 +18,31 @@
     color: #c9c9c9;
     white-space: pre-wrap;
   }
+  .probe-rail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 16px;
+  }
+  .probe-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid #242424;
+    background: #111;
+    color: #d5d5d5;
+    text-decoration: none;
+    font: 600 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    white-space: nowrap;
+  }
+  .probe-link:hover { border-color: #3a3a3a; color: #fff; }
+  .probe-link.is-active {
+    border-color: #4fc3f7;
+    background: rgba(79,195,247,0.12);
+    color: #c7edff;
+  }
   .panel[hidden] { display: none; }
   #output { font: 13px "SF Mono", monospace; white-space: pre-wrap; background: #111; border: 1px solid #222; border-radius: 8px; padding: 16px; }
   .match { color: #81c784; }
@@ -30,6 +55,7 @@
 <body>
 <h1>Emoji Width: Canvas vs DOM — Multi-Font Sweep</h1>
 <p class="sub">Tests whether emoji canvas/DOM diff is constant across fonts (font-independent) or varies per font.</p>
+<nav id="probeRail" class="probe-rail" aria-label="Emoji probe presets"></nav>
 <div id="summaryPanel" class="panel" hidden></div>
 <div id="output">Running...</div>
 <script type="module">
@@ -79,11 +105,15 @@ const outputNode = document.getElementById('output');
 if (!(outputNode instanceof HTMLDivElement)) throw new Error('#output not found');
 const summaryNode = document.getElementById('summaryPanel');
 if (!(summaryNode instanceof HTMLDivElement)) throw new Error('#summaryPanel not found');
+const probeRailNode = document.getElementById('probeRail');
+if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found');
 
 if (reportRequested) {
   clearNavigationReport();
   publishNavigationPhase('loading', requestId);
 }
+
+renderProbeRail();
 
 const ctx = createMeasureContext();
 
@@ -314,6 +344,57 @@ function parseThresholdParam(raw) {
   if (raw === null || raw.trim() === '') return 0.5;
   const parsed = Number.parseFloat(raw);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0.5;
+}
+
+function renderProbeRail() {
+  const presets = [
+    {
+      label: 'Default',
+      href: buildProbeHref({}),
+      active: arraysEqual(sizes, defaultSizes) && thresholdPx === 0.5,
+    },
+    {
+      label: 'Tight 0.5',
+      href: buildProbeHref({ sizes: [12, 16, 24, 32], threshold: 0.5 }),
+      active: arraysEqual(sizes, [12, 16, 24, 32]) && thresholdPx === 0.5,
+    },
+    {
+      label: 'Coarse 1.0',
+      href: buildProbeHref({ sizes: [10, 14, 18, 24, 32], threshold: 1 }),
+      active: arraysEqual(sizes, [10, 14, 18, 24, 32]) && thresholdPx === 1,
+    },
+    {
+      label: 'Dense 0.25',
+      href: buildProbeHref({ sizes: [10, 12, 14, 16, 18, 20, 24], threshold: 0.25 }),
+      active: arraysEqual(sizes, [10, 12, 14, 16, 18, 20, 24]) && thresholdPx === 0.25,
+    },
+  ];
+
+  probeRailNode.replaceChildren(...presets.map(createProbeLink));
+}
+
+function createProbeLink(definition) {
+  const element = document.createElement('a');
+  element.className = definition.active ? 'probe-link is-active' : 'probe-link';
+  element.href = definition.href;
+  element.textContent = definition.label;
+  return element;
+}
+
+function buildProbeHref(options) {
+  const next = new URLSearchParams();
+  if (options.sizes !== undefined) next.set('sizes', options.sizes.join(','));
+  if (options.threshold !== undefined) next.set('threshold', String(options.threshold));
+  const query = next.toString();
+  return query.length === 0 ? location.pathname : `${location.pathname}?${query}`;
+}
+
+function arraysEqual(left, right) {
+  if (left.length !== right.length) return false;
+  for (let index = 0; index < left.length; index++) {
+    if (left[index] !== right[index]) return false;
+  }
+  return true;
 }
 
 function formatSummary(report) {

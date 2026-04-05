@@ -77,6 +77,8 @@ type State = {
 }
 
 const dom = createDomCache()
+const probeRailNode = document.getElementById('probeRail')
+if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found')
 const params = new URLSearchParams(location.search)
 const requestId = params.get('requestId') ?? undefined
 const reportRequested = params.get('report') === '1'
@@ -153,6 +155,7 @@ function render(): void {
   state.events.showIndicatorsInput = null
 
   renderFrame(dom, frame, resources.normalSpaceWidth)
+  renderProbeRail(frame.controls)
   scheduleCssOverlaySync()
 }
 
@@ -273,6 +276,47 @@ function parseBooleanParam(raw: string | null, fallback: boolean): boolean {
   if (raw === '1' || raw.toLowerCase() === 'true') return true
   if (raw === '0' || raw.toLowerCase() === 'false') return false
   return fallback
+}
+
+function renderProbeRail(controls: DemoControls): void {
+  const presets = [
+    {
+      label: 'Default 364',
+      href: buildProbeHref({ width: 364, showIndicators: true }),
+      active: controls.colWidth === 364 && controls.showIndicators,
+    },
+    {
+      label: 'Narrow 260',
+      href: buildProbeHref({ width: 260, showIndicators: true }),
+      active: controls.colWidth === 260 && controls.showIndicators,
+    },
+    {
+      label: 'Probe 364',
+      href: buildProbeHref({ width: 364, showIndicators: false }),
+      active: controls.colWidth === 364 && !controls.showIndicators,
+    },
+    {
+      label: 'Wide 520',
+      href: buildProbeHref({ width: 520, showIndicators: false }),
+      active: controls.colWidth === 520 && !controls.showIndicators,
+    },
+  ]
+  probeRailNode.replaceChildren(...presets.map(createProbeLink))
+}
+
+function createProbeLink(definition: { label: string; href: string; active: boolean }): HTMLAnchorElement {
+  const element = document.createElement('a')
+  element.className = definition.active ? 'probe-link is-active' : 'probe-link'
+  element.href = definition.href
+  element.textContent = definition.label
+  return element
+}
+
+function buildProbeHref(options: { width: number; showIndicators: boolean }): string {
+  const next = new URLSearchParams()
+  next.set('width', String(options.width))
+  next.set('showIndicators', options.showIndicators ? '1' : '0')
+  return `${location.pathname}?${next.toString()}`
 }
 
 function withRequestId(report: JustificationReport): JustificationReport {
