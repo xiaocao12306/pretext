@@ -64,6 +64,33 @@
       backdrop-filter: blur(10px);
     }
     .telemetry[hidden] { display: none; }
+    .probe-rail {
+      position: fixed; left: 16px; bottom: 16px; z-index: 101;
+      display: flex; flex-wrap: wrap; gap: 8px;
+      max-width: min(540px, calc(100vw - 32px));
+      padding: 12px;
+      border-radius: 18px;
+      background: rgba(7, 8, 12, 0.72);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 24px 50px rgba(0,0,0,0.28);
+      backdrop-filter: blur(10px);
+    }
+    .probe-link {
+      display: inline-flex; align-items: center; min-height: 30px;
+      padding: 0 12px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.84);
+      text-decoration: none;
+      font: 600 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      white-space: nowrap;
+    }
+    .probe-link:hover { border-color: rgba(255,255,255,0.22); color: #fff; }
+    .probe-link.is-active {
+      background: rgba(196,163,90,0.18);
+      border-color: rgba(196,163,90,0.45);
+      color: #fff4d7;
+    }
     .credit {
       position: fixed; right: 16px; bottom: 12px; z-index: 100;
       font: 400 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -86,6 +113,15 @@
         min-width: 0; max-width: calc(100vw - 24px);
         font-size: 11px; line-height: 1.4;
       }
+
+      .probe-rail {
+        left: 12px; bottom: 12px; max-width: calc(100vw - 24px);
+        padding: 10px;
+      }
+
+      .probe-link {
+        min-height: 28px; padding: 0 10px; font-size: 11px;
+      }
     }
   </style>
 </head>
@@ -93,6 +129,7 @@
   <div id="stage"></div>
   <div id="hintPill" class="hint">Drag the orbs &middot; Click to pause &middot; Zero DOM reads</div>
   <pre id="telemetryPanel" class="telemetry" hidden></pre>
+  <nav id="probeRail" class="probe-rail" aria-label="Editorial engine probe presets"></nav>
   <a class="credit" href="https://x.com/somnai_dreams" target="_blank" rel="noreferrer">Made by @somnai_dreams</a>
 
   <script type="module" src="./editorial-engine.ts"></script>

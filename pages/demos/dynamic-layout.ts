@@ -245,10 +245,13 @@ const hintNode = document.getElementById('hintPill')
 if (!(hintNode instanceof HTMLParagraphElement)) throw new Error('#hintPill not found')
 const telemetryNode = document.getElementById('telemetryPanel')
 if (!(telemetryNode instanceof HTMLElement)) throw new Error('#telemetryPanel not found')
+const probeRailNode = document.getElementById('probeRail')
+if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found')
 
 type DomCache = {
   hint: HTMLParagraphElement // cache lifetime: page
   telemetry: HTMLElement // cache lifetime: page
+  probeRail: HTMLElement // cache lifetime: page
   page: HTMLElement // cache lifetime: page
   headline: HTMLHeadingElement // cache lifetime: page
   credit: HTMLParagraphElement // cache lifetime: page
@@ -290,6 +293,7 @@ if (reportRequested) {
 const domCache: DomCache = {
   hint: hintNode,
   telemetry: telemetryNode,
+  probeRail: probeRailNode,
   page: pageNode,
   headline: createHeadline(),
   credit: createCredit(),
@@ -298,6 +302,8 @@ const domCache: DomCache = {
   headlineLines: [],
   bodyLines: [],
 }
+
+renderProbeRail()
 
 function createHeadline(): HTMLHeadingElement {
   const element = document.createElement('h1')
@@ -1217,6 +1223,75 @@ function copyHintText(layout: PageLayout): string {
 
 function syncHint(text: string): void {
   domCache.hint.textContent = text
+}
+
+function renderProbeRail(): void {
+  const presets = [
+    {
+      label: 'Live',
+      href: buildProbeHref({}),
+      active:
+        pageWidthOverride === null &&
+        pageHeightOverride === null &&
+        !showDiagnostics &&
+        logoAnimations.openai.angle === 0 &&
+        logoAnimations.claude.angle === 0,
+    },
+    {
+      label: 'Spread 1365',
+      href: buildProbeHref({ pageWidth: 1365, pageHeight: 900, showDiagnostics: true }),
+      active:
+        pageWidthOverride === 1365 &&
+        pageHeightOverride === 900 &&
+        logoAnimations.openai.angle === 0 &&
+        logoAnimations.claude.angle === 0,
+    },
+    {
+      label: 'Narrow 700',
+      href: buildProbeHref({ pageWidth: 700, pageHeight: 900, showDiagnostics: true }),
+      active:
+        pageWidthOverride === 700 &&
+        pageHeightOverride === 900 &&
+        logoAnimations.openai.angle === 0 &&
+        logoAnimations.claude.angle === 0,
+    },
+    {
+      label: 'Angle pair',
+      href: buildProbeHref({ pageWidth: 1365, pageHeight: 900, openaiAngle: -Math.PI, claudeAngle: Math.PI, showDiagnostics: true }),
+      active:
+        pageWidthOverride === 1365 &&
+        pageHeightOverride === 900 &&
+        Math.abs(logoAnimations.openai.angle + Math.PI) < 0.0005 &&
+        Math.abs(logoAnimations.claude.angle - Math.PI) < 0.0005,
+    },
+  ]
+
+  domCache.probeRail.replaceChildren(...presets.map(createProbeLink))
+}
+
+function createProbeLink(definition: { label: string; href: string; active: boolean }): HTMLAnchorElement {
+  const element = document.createElement('a')
+  element.className = definition.active ? 'probe-link is-active' : 'probe-link'
+  element.href = definition.href
+  element.textContent = definition.label
+  return element
+}
+
+function buildProbeHref(options: {
+  pageWidth?: number
+  pageHeight?: number
+  openaiAngle?: number
+  claudeAngle?: number
+  showDiagnostics?: boolean
+}): string {
+  const next = new URLSearchParams()
+  if (options.pageWidth !== undefined) next.set('pageWidth', String(options.pageWidth))
+  if (options.pageHeight !== undefined) next.set('pageHeight', String(options.pageHeight))
+  if (options.openaiAngle !== undefined && options.openaiAngle !== 0) next.set('openaiAngle', options.openaiAngle.toFixed(6))
+  if (options.claudeAngle !== undefined && options.claudeAngle !== 0) next.set('claudeAngle', options.claudeAngle.toFixed(6))
+  if (options.showDiagnostics !== undefined) next.set('showDiagnostics', options.showDiagnostics ? '1' : '0')
+  const query = next.toString()
+  return query.length === 0 ? location.pathname : `${location.pathname}?${query}`
 }
 
 function syncTelemetry(report: DynamicLayoutReport | null): void {

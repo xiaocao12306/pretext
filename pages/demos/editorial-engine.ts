@@ -365,6 +365,8 @@ const hintNode = document.getElementById('hintPill')
 if (!(hintNode instanceof HTMLDivElement)) throw new Error('#hintPill not found')
 const telemetryNode = document.getElementById('telemetryPanel')
 if (!(telemetryNode instanceof HTMLPreElement)) throw new Error('#telemetryPanel not found')
+const probeRailNode = document.getElementById('probeRail')
+if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found')
 
 const orbDefs: OrbDefinition[] = [
   { fx: 0.52, fy: 0.22, r: 110, vx: 24, vy: 16, color: [196, 163, 90] },
@@ -437,6 +439,7 @@ const domCache = {
   stage, // cache lifetime: same as page
   hint: hintNode, // cache lifetime: same as page
   telemetry: telemetryNode, // cache lifetime: same as page
+  probeRail: probeRailNode, // cache lifetime: same as page
   dropCap: dropCapEl, // cache lifetime: same as page
   bodyLines: linePool, // cache lifetime: on body line-count changes
   headlineLines: headlinePool, // cache lifetime: on headline line-count changes
@@ -462,6 +465,8 @@ const st: AppState = {
 let committedTextProjection: TextProjection | null = null
 let reportPublished = false
 let lastCommittedReport: EditorialEngineReport | null = null
+
+renderProbeRail()
 
 function syncPool<T extends HTMLElement>(pool: T[], count: number, create: () => T): void {
   while (pool.length < count) {
@@ -1283,6 +1288,58 @@ function copyHintText(pageWidth: number, pageHeight: number, columnCount: number
 
 function syncHint(text: string): void {
   domCache.hint.textContent = text
+}
+
+function renderProbeRail(): void {
+  const presets = [
+    {
+      label: 'Live',
+      href: buildPresetHref({}),
+      active: pageWidthOverride === null && pageHeightOverride === null && orbPreset === 'default' && animateOrbs,
+    },
+    {
+      label: 'Stacked 1365',
+      href: buildPresetHref({ pageWidth: 1365, pageHeight: 900, orbPreset: 'stacked', animate: false, showDiagnostics: true }),
+      active: pageWidthOverride === 1365 && pageHeightOverride === 900 && orbPreset === 'stacked' && !animateOrbs,
+    },
+    {
+      label: 'Diagonal 960',
+      href: buildPresetHref({ pageWidth: 960, pageHeight: 900, orbPreset: 'diagonal', animate: false, showDiagnostics: true }),
+      active: pageWidthOverride === 960 && pageHeightOverride === 900 && orbPreset === 'diagonal' && !animateOrbs,
+    },
+    {
+      label: 'Corridor 640',
+      href: buildPresetHref({ pageWidth: 640, pageHeight: 900, orbPreset: 'corridor', animate: false, showDiagnostics: true }),
+      active: pageWidthOverride === 640 && pageHeightOverride === 900 && orbPreset === 'corridor' && !animateOrbs,
+    },
+  ]
+
+  domCache.probeRail.replaceChildren(...presets.map(createProbeLink))
+}
+
+function createProbeLink(definition: { label: string; href: string; active: boolean }): HTMLAnchorElement {
+  const element = document.createElement('a')
+  element.className = definition.active ? 'probe-link is-active' : 'probe-link'
+  element.href = definition.href
+  element.textContent = definition.label
+  return element
+}
+
+function buildPresetHref(options: {
+  pageWidth?: number
+  pageHeight?: number
+  orbPreset?: OrbPreset
+  animate?: boolean
+  showDiagnostics?: boolean
+}): string {
+  const next = new URLSearchParams()
+  if (options.pageWidth !== undefined) next.set('pageWidth', String(options.pageWidth))
+  if (options.pageHeight !== undefined) next.set('pageHeight', String(options.pageHeight))
+  if (options.orbPreset !== undefined && options.orbPreset !== 'default') next.set('orbPreset', options.orbPreset)
+  if (options.animate !== undefined && !options.animate) next.set('animate', '0')
+  if (options.showDiagnostics !== undefined) next.set('showDiagnostics', options.showDiagnostics ? '1' : '0')
+  const query = next.toString()
+  return query.length === 0 ? location.pathname : `${location.pathname}?${query}`
 }
 
 function syncTelemetry(report: EditorialEngineReport | null): void {

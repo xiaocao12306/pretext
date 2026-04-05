@@ -112,6 +112,47 @@
         display: none;
       }
 
+      .probe-rail {
+        position: fixed;
+        left: 18px;
+        bottom: 18px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        max-width: min(560px, calc(100vw - 36px));
+        padding: 12px;
+        border-radius: 18px;
+        background: rgba(246, 240, 230, 0.92);
+        border: 1px solid rgba(17, 16, 13, 0.12);
+        box-shadow: 0 18px 42px rgba(17, 16, 13, 0.12);
+        backdrop-filter: blur(10px);
+        z-index: 6;
+      }
+
+      .probe-link {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 0 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(17, 16, 13, 0.12);
+        background: rgba(255, 255, 255, 0.38);
+        color: rgba(17, 16, 13, 0.84);
+        text-decoration: none;
+        font: 600 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+        white-space: nowrap;
+      }
+
+      .probe-link:hover {
+        border-color: rgba(17, 16, 13, 0.22);
+      }
+
+      .probe-link.is-active {
+        background: rgba(217, 119, 87, 0.14);
+        border-color: rgba(217, 119, 87, 0.36);
+        color: rgba(120, 52, 28, 0.96);
+      }
+
       .stage {
         position: relative;
         height: 100%;
@@ -196,6 +237,19 @@
           width: min(100vw - 24px, 360px);
           font-size: 11px;
         }
+
+        .probe-rail {
+          left: 12px;
+          bottom: 12px;
+          max-width: calc(100vw - 24px);
+          padding: 10px;
+        }
+
+        .probe-link {
+          min-height: 28px;
+          padding: 0 10px;
+          font-size: 11px;
+        }
       }
     </style>
   </head>
@@ -205,6 +259,7 @@
       <div class="atmosphere atmosphere--right"></div>
       <p id="hintPill" class="hint-pill">Everything laid out in JS. Resize horizontally and vertically, then click the logos.</p>
       <aside id="telemetryPanel" class="telemetry" hidden></aside>
+      <nav id="probeRail" class="probe-rail" aria-label="Dynamic layout probe presets"></nav>
       <div id="stage" class="stage"></div>
     </main>
 
