@@ -142,6 +142,16 @@
 
 因此这条资产探针现在不只会产出原始 report，也开始具备一眼看整体健康度的脚本视图。
 
+## 9. 页面侧随后又补上了常显 summary panel
+`dynamic-layout` 页面现在又把这套 preset / routing / right-column 诊断打到了页内常显摘要上，详见 [[实现-dynamic-layout页内摘要面板与preset诊断]]。
+
+这一步让 asset-wrap demo 不再只有：
+- probe rail
+- telemetry
+- checker
+
+三层割裂入口，而是开始拥有一个默认就可读的页面级诊断面。
+
 ## 当前判断
 - `dynamic-layout` 现在和 `emoji-test`、`justification-comparison` 一样，进入了“研究页到半正式探针”的过渡带
 - 这次更重要的进展在于：`pages/assets/*` 不再只通过视觉效果证明存在，而是第一次通过 report/checker 暴露出稳定的资产几何与流式正文信号

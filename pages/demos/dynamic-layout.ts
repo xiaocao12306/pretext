@@ -251,12 +251,15 @@ const hintNode = document.getElementById('hintPill')
 if (!(hintNode instanceof HTMLParagraphElement)) throw new Error('#hintPill not found')
 const telemetryNode = document.getElementById('telemetryPanel')
 if (!(telemetryNode instanceof HTMLElement)) throw new Error('#telemetryPanel not found')
+const summaryPanelNode = document.getElementById('summaryPanel')
+if (!(summaryPanelNode instanceof HTMLElement)) throw new Error('#summaryPanel not found')
 const probeRailNode = document.getElementById('probeRail')
 if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found')
 
 type DomCache = {
   hint: HTMLParagraphElement // cache lifetime: page
   telemetry: HTMLElement // cache lifetime: page
+  summary: HTMLElement // cache lifetime: page
   probeRail: HTMLElement // cache lifetime: page
   page: HTMLElement // cache lifetime: page
   headline: HTMLHeadingElement // cache lifetime: page
@@ -310,6 +313,7 @@ if (reportRequested) {
 const domCache: DomCache = {
   hint: hintNode,
   telemetry: telemetryNode,
+  summary: summaryPanelNode,
   probeRail: probeRailNode,
   page: pageNode,
   headline: createHeadline(),
@@ -1056,6 +1060,7 @@ function commitFrame(now: number): boolean {
     leftRouting,
     rightRouting,
   )
+  syncSummaryPanel(lastCommittedReport)
   maybePublishReport()
   syncTelemetry(lastCommittedReport)
 
@@ -1321,8 +1326,29 @@ function syncTelemetry(report: DynamicLayoutReport | null): void {
   domCache.telemetry.textContent = formatTelemetry(report)
 }
 
+function syncSummaryPanel(report: DynamicLayoutReport | null): void {
+  if (report === null) {
+    domCache.summary.textContent = ''
+    return
+  }
+  domCache.summary.textContent = formatSummaryPanel(report)
+}
+
 function formatAngle(angle: number): string {
   return `${(angle / Math.PI).toFixed(2)}pi`
+}
+
+function formatSummaryPanel(report: DynamicLayoutReport): string {
+  const body = report.body
+  const routing = report.routing
+  return [
+    `preset ${report.presetKey ?? 'manual'}  ${report.page.width}x${report.page.height}  ${report.page.isNarrow ? 'narrow' : 'spread'}`,
+    `body ${body.totalLineCount} lines  right-column ${body.rightColumnUsed ? 'used' : 'idle'}  ${body.consumedAllText ? 'complete' : `cursor ${body.remainingSegmentIndex}:${body.remainingGraphemeIndex}`}`,
+    `headline ${report.headline.lineCount}  credit slots ${routing.creditSlotCount}  picked ${formatNullableWidth(routing.creditSelectedSlotWidth)}`,
+    `blocked bands L/R ${routing.left.blockedBandCount}/${routing.right.blockedBandCount}  skipped ${routing.left.skippedBandCount}/${routing.right.skippedBandCount}`,
+    `slot avg L/R ${formatNullableWidth(routing.left.avgChosenSlotWidth)} / ${formatNullableWidth(routing.right.avgChosenSlotWidth)}`,
+    `angles O/C ${formatAngle(report.logos.openai.angle)} / ${formatAngle(report.logos.claude.angle)}`,
+  ].join('\n')
 }
 
 function formatTelemetry(report: DynamicLayoutReport): string {
