@@ -62,3 +62,4 @@ summary panel 不是另一套单独计算。
 - `justification-comparison` 现在不只是三栏对比 demo，也开始具备和 `emoji-test` / `dynamic-layout` / `editorial-engine` 类似的页面级诊断面板
 - 这块 summary panel 让 preset 身份、段落质量结论和 report 口径第一次在页面上对齐，用户不必靠阅读三份局部 metric 再自己拼结论
 - 对 Phase 3 来说，这属于 demo 可见输出增强；对 Phase 4 来说，它又继续巩固了“页面看到什么，checker 就在同一口径上拉什么”
+- 页面随后又把三栏比较进一步收成了可读卡片，checker 也补上了 preset 矩阵摘要，详见 [[实现-justification结果卡片与checker矩阵摘要]]

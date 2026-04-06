@@ -58,6 +58,64 @@
       font: 12px/1.5 "SF Mono", ui-monospace, monospace;
       white-space: pre-wrap;
     }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin: 0 auto 20px;
+      max-width: 980px;
+    }
+    .summary-card {
+      padding: 12px 14px;
+      border: 1px solid #ddd4c8;
+      border-radius: 12px;
+      background: #f5f2ed;
+      color: #5f5447;
+    }
+    .summary-card.is-best {
+      border-color: #9e876c;
+      background: #ece2d5;
+    }
+    .summary-card-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0 0 8px;
+      font: 700 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #473b2d;
+    }
+    .summary-card-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(158, 135, 108, 0.14);
+      color: #6d563d;
+      font: 700 10px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .summary-card-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font: 400 12px/1.5 "SF Mono", ui-monospace, monospace;
+      color: #6a6055;
+    }
+    .summary-card-row + .summary-card-row {
+      margin-top: 2px;
+    }
+    .summary-card-label {
+      color: #8a7f70;
+    }
+    .summary-card-value {
+      color: #4f4436;
+      font-weight: 600;
+      text-align: right;
+    }
     .controls label {
       font: 500 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
       color: #8a7f70; text-transform: uppercase; letter-spacing: 0.5px;
@@ -166,6 +224,7 @@
 
     <nav id="probeRail" class="probe-rail" aria-label="Justification probe presets"></nav>
     <pre id="summaryPanel" class="summary-panel" aria-live="polite"></pre>
+    <section id="comparisonGrid" class="summary-grid" aria-label="Justification comparison cards"></section>
 
     <div class="controls">
       <label for="widthSlider">Column width</label>

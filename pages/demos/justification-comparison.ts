@@ -83,6 +83,8 @@ const probeRailNode = document.getElementById('probeRail')
 if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found')
 const summaryPanelNode = document.getElementById('summaryPanel')
 if (!(summaryPanelNode instanceof HTMLElement)) throw new Error('#summaryPanel not found')
+const comparisonGridNode = document.getElementById('comparisonGrid')
+if (!(comparisonGridNode instanceof HTMLElement)) throw new Error('#comparisonGrid not found')
 const params = new URLSearchParams(location.search)
 const requestedPreset = findPresetParam(params.get('preset'))
 const presetOverridesActive = params.has('width') || params.has('showIndicators')
@@ -253,6 +255,7 @@ function toColumnMetrics(metrics: QualityMetrics, totalHeight: number): ColumnMe
 
 function syncSummaryPanel(report: JustificationReport): void {
   summaryPanelNode.textContent = formatSummary(report)
+  renderComparisonGrid(report)
 }
 
 function buildMetricsDelta(
@@ -284,6 +287,101 @@ function formatSignedPercent(value: number): string {
 
 function formatSignedInt(value: number): string {
   return `${value >= 0 ? '+' : ''}${value}`
+}
+
+function renderComparisonGrid(report: JustificationReport): void {
+  const cards = [
+    createComparisonCard('CSS', report.columns.css, report, {
+      avgBest: report.bestColumns.avgDeviation === 'css',
+      maxBest: report.bestColumns.maxDeviation === 'css',
+      riverBest: report.bestColumns.riverCount === 'css',
+      deltaLabel: 'baseline',
+      deltaValue: 'native',
+    }),
+    createComparisonCard('Hyphen', report.columns.hyphen, report, {
+      avgBest: report.bestColumns.avgDeviation === 'hyphen',
+      maxBest: report.bestColumns.maxDeviation === 'hyphen',
+      riverBest: report.bestColumns.riverCount === 'hyphen',
+      deltaLabel: 'Δvs css',
+      deltaValue:
+        `avg ${formatSignedPercent(report.comparisons.hyphenVsCss.avgDeviationDelta)} ` +
+        `max ${formatSignedPercent(report.comparisons.hyphenVsCss.maxDeviationDelta)} ` +
+        `r ${formatSignedInt(report.comparisons.hyphenVsCss.riverCountDelta)}`,
+    }),
+    createComparisonCard('Optimal', report.columns.optimal, report, {
+      avgBest: report.bestColumns.avgDeviation === 'optimal',
+      maxBest: report.bestColumns.maxDeviation === 'optimal',
+      riverBest: report.bestColumns.riverCount === 'optimal',
+      deltaLabel: 'Δvs css',
+      deltaValue:
+        `avg ${formatSignedPercent(report.comparisons.optimalVsCss.avgDeviationDelta)} ` +
+        `max ${formatSignedPercent(report.comparisons.optimalVsCss.maxDeviationDelta)} ` +
+        `r ${formatSignedInt(report.comparisons.optimalVsCss.riverCountDelta)}`,
+    }),
+  ]
+
+  comparisonGridNode.replaceChildren(...cards)
+}
+
+function createComparisonCard(
+  label: string,
+  column: ColumnMetricsReport,
+  report: JustificationReport,
+  options: {
+    avgBest: boolean
+    maxBest: boolean
+    riverBest: boolean
+    deltaLabel: string
+    deltaValue: string
+  },
+): HTMLElement {
+  const card = document.createElement('article')
+  card.className = options.avgBest || options.maxBest || options.riverBest ? 'summary-card is-best' : 'summary-card'
+
+  const titleRow = document.createElement('div')
+  titleRow.className = 'summary-card-title'
+  const title = document.createElement('span')
+  title.textContent = label
+  titleRow.append(title)
+  const badgeText = buildBestBadge(options)
+  if (badgeText !== null) {
+    const badge = document.createElement('span')
+    badge.className = 'summary-card-badge'
+    badge.textContent = badgeText
+    titleRow.append(badge)
+  }
+
+  const rows = [
+    createComparisonRow('lines', String(column.lineCount)),
+    createComparisonRow('avg dev', `${(column.avgDeviation * 100).toFixed(1)}%`),
+    createComparisonRow('max dev', `${(column.maxDeviation * 100).toFixed(1)}%`),
+    createComparisonRow('rivers', label === 'CSS' ? String(report.cssOverlayRiverCount) : String(column.riverCount)),
+    createComparisonRow(options.deltaLabel, options.deltaValue),
+  ]
+
+  card.append(titleRow, ...rows)
+  return card
+}
+
+function buildBestBadge(options: { avgBest: boolean; maxBest: boolean; riverBest: boolean }): string | null {
+  const wins: string[] = []
+  if (options.avgBest) wins.push('avg')
+  if (options.maxBest) wins.push('max')
+  if (options.riverBest) wins.push('river')
+  return wins.length === 0 ? null : `best ${wins.join('/')}`
+}
+
+function createComparisonRow(label: string, value: string): HTMLElement {
+  const row = document.createElement('div')
+  row.className = 'summary-card-row'
+  const labelNode = document.createElement('span')
+  labelNode.className = 'summary-card-label'
+  labelNode.textContent = label
+  const valueNode = document.createElement('span')
+  valueNode.className = 'summary-card-value'
+  valueNode.textContent = value
+  row.append(labelNode, valueNode)
+  return row
 }
 
 function pickBestColumn(

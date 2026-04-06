@@ -74,3 +74,4 @@
 - 它还不是 accuracy/corpus 那种 standing snapshot，但已经具备稳定 query 输入、hash report 输出、checker 拉取三件套
 - 这条实现链说明 repo 在逐步把高价值研究页升级成半正式的自动化探针，而不是永远停留在人工观察层
 - 页面侧随后又补上了可见的 summary/preset 面板，详见 [[实现-justification汇总面板与preset诊断摘要]]
+- 页面和 checker 后续又补了结果卡片与矩阵摘要，详见 [[实现-justification结果卡片与checker矩阵摘要]]

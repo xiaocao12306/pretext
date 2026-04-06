@@ -66,6 +66,16 @@ type JustificationReport = {
   message?: string
 }
 
+type JustificationSummaryRow = {
+  preset: string
+  width: number
+  cssOverlayRiverCount: number
+  bestAvg: string
+  bestRiver: string
+  hyphenAvgDelta: number
+  optimalAvgDelta: number
+}
+
 function parseStringFlag(name: string): string | null {
   const prefix = `--${name}=`
   const arg = process.argv.find(value => value.startsWith(prefix))
@@ -159,6 +169,55 @@ function validatePresetReport(report: JustificationReport, expectedPresetKey: Ju
   return false
 }
 
+function formatRange(min: number, max: number): string {
+  return min === max ? String(min) : `${min}..${max}`
+}
+
+function toSummaryRow(entry: { preset: JustificationProbePreset['key']; report: JustificationReport }): JustificationSummaryRow | null {
+  const report = entry.report
+  if (report.status === 'error') return null
+  if (report.controls === undefined || report.comparisons === undefined || report.bestColumns === undefined) return null
+  return {
+    preset: report.presetKey ?? entry.preset,
+    width: report.controls.colWidth,
+    cssOverlayRiverCount: report.cssOverlayRiverCount ?? 0,
+    bestAvg: report.bestColumns.avgDeviation,
+    bestRiver: report.bestColumns.riverCount,
+    hyphenAvgDelta: report.comparisons.hyphenVsCss.avgDeviationDelta,
+    optimalAvgDelta: report.comparisons.optimalVsCss.avgDeviationDelta,
+  }
+}
+
+function printMatrixSummary(entries: Array<{ preset: JustificationProbePreset['key']; report: JustificationReport }>): void {
+  const rows = entries
+    .map(toSummaryRow)
+    .filter((row): row is JustificationSummaryRow => row !== null)
+
+  console.log('matrix summary:')
+  console.log(`  runs ${entries.length} ready ${rows.length} error ${entries.length - rows.length}`)
+  if (rows.length === 0) return
+
+  const widths = rows.map(row => row.width)
+  const rivers = rows.map(row => row.cssOverlayRiverCount)
+  const hyphenDeltas = rows.map(row => row.hyphenAvgDelta * 100)
+  const optimalDeltas = rows.map(row => row.optimalAvgDelta * 100)
+  console.log(
+    `  widths ${formatRange(Math.min(...widths), Math.max(...widths))} | ` +
+    `css rivers ${formatRange(Math.min(...rivers), Math.max(...rivers))} | ` +
+    `Δhyphen avg ${formatRange(Number(Math.min(...hyphenDeltas).toFixed(1)), Number(Math.max(...hyphenDeltas).toFixed(1)))}% | ` +
+    `Δoptimal avg ${formatRange(Number(Math.min(...optimalDeltas).toFixed(1)), Number(Math.max(...optimalDeltas).toFixed(1)))}%`,
+  )
+
+  for (let index = 0; index < rows.length; index++) {
+    const row = rows[index]!
+    console.log(
+      `  ${row.preset} -> width ${row.width} | rivers ${row.cssOverlayRiverCount} | ` +
+      `best avg ${row.bestAvg} | best river ${row.bestRiver} | ` +
+      `Δhyphen ${formatSignedPercent(row.hyphenAvgDelta)} | Δoptimal ${formatSignedPercent(row.optimalAvgDelta)}`,
+    )
+  }
+}
+
 const browser = parseBrowser(parseStringFlag('browser'))
 const widths = parseWidths(parseStringFlag('widths'))
 const presets = parsePresetKeys(parseStringFlag('presets'))
@@ -178,6 +237,7 @@ try {
   serverProcess = pageServer.process
 
   if (presets.length > 0) {
+    const presetReports: Array<{ preset: JustificationProbePreset['key']; report: JustificationReport }> = []
     for (let index = 0; index < presets.length; index++) {
       const preset = presets[index]!
       const requestId = `${Date.now()}-${preset.key}-${Math.random().toString(36).slice(2, 8)}`
@@ -187,12 +247,14 @@ try {
         `&requestId=${encodeURIComponent(requestId)}`
       const report = await loadHashReport<JustificationReport>(session, url, requestId, browser, timeoutMs)
       reports.push({ preset: preset.key, report })
+      presetReports.push({ preset: preset.key, report })
       console.log(`[preset:${preset.key}]`)
       printReport(report)
       if (report.status === 'error' || !validatePresetReport(report, preset.key)) {
         process.exitCode = 1
       }
     }
+    printMatrixSummary(presetReports)
   } else {
     for (let index = 0; index < widths.length; index++) {
       const width = widths[index]!
