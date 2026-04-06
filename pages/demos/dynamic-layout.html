@@ -130,6 +130,54 @@
         z-index: 6;
       }
 
+      .asset-card-grid {
+        position: fixed;
+        left: 18px;
+        bottom: 262px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        width: min(340px, calc(100vw - 36px));
+        z-index: 6;
+      }
+
+      .asset-card {
+        padding: 12px 14px;
+        border-radius: 18px;
+        background: rgba(246, 240, 230, 0.92);
+        border: 1px solid rgba(17, 16, 13, 0.12);
+        box-shadow: 0 18px 42px rgba(17, 16, 13, 0.12);
+        backdrop-filter: blur(10px);
+        color: rgba(17, 16, 13, 0.84);
+      }
+
+      .asset-card-title {
+        margin: 0 0 6px;
+        font: 700 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .asset-card-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        font: 500 11px/1.45 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      }
+
+      .asset-card-row + .asset-card-row {
+        margin-top: 2px;
+      }
+
+      .asset-card-label {
+        color: rgba(79, 70, 59, 0.74);
+      }
+
+      .asset-card-value {
+        color: rgba(17, 16, 13, 0.9);
+        text-align: right;
+      }
+
       .probe-rail {
         position: fixed;
         left: 18px;
@@ -263,6 +311,13 @@
           font-size: 11px;
         }
 
+        .asset-card-grid {
+          left: 12px;
+          bottom: 220px;
+          width: min(100vw - 24px, 360px);
+          grid-template-columns: 1fr;
+        }
+
         .probe-rail {
           left: 12px;
           bottom: 12px;
@@ -284,6 +339,7 @@
       <div class="atmosphere atmosphere--right"></div>
       <p id="hintPill" class="hint-pill">Everything laid out in JS. Resize horizontally and vertically, then click the logos.</p>
       <aside id="telemetryPanel" class="telemetry" hidden></aside>
+      <section id="assetCardGrid" class="asset-card-grid" aria-label="Dynamic layout asset cards"></section>
       <aside id="summaryPanel" class="summary-panel" aria-live="polite"></aside>
       <nav id="probeRail" class="probe-rail" aria-label="Dynamic layout probe presets"></nav>
       <div id="stage" class="stage"></div>

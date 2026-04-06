@@ -64,6 +64,11 @@
 
 所以这次不是单纯补一个 UI 盒子，而是把 Phase 4 checker 里的判断面真正下沉到了 Phase 3 demo。
 
+## 4. 页面随后又把 per-asset 几何拆成了独立卡片
+`dynamic-layout` 后续又补上了 OpenAI / Claude 两张 asset cards，详见 [[实现-dynamic-layout资产卡片与几何可视摘要]]。
+
+这样 summary panel 继续负责全局状态，而 per-asset geometry 则开始有了自己的页面层。
+
 ## 当前判断
 - `dynamic-layout` 现在不再只是“有 preset rail 的 demo”，而是“页面本身就能读懂 preset 结果的 demo”
 - 这让 asset-driven rich demo 第一次具备了普通打开页面即可读的诊断层，而不必先开 `showDiagnostics` 或跑 checker

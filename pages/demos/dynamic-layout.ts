@@ -251,6 +251,8 @@ const hintNode = document.getElementById('hintPill')
 if (!(hintNode instanceof HTMLParagraphElement)) throw new Error('#hintPill not found')
 const telemetryNode = document.getElementById('telemetryPanel')
 if (!(telemetryNode instanceof HTMLElement)) throw new Error('#telemetryPanel not found')
+const assetCardGridNode = document.getElementById('assetCardGrid')
+if (!(assetCardGridNode instanceof HTMLElement)) throw new Error('#assetCardGrid not found')
 const summaryPanelNode = document.getElementById('summaryPanel')
 if (!(summaryPanelNode instanceof HTMLElement)) throw new Error('#summaryPanel not found')
 const probeRailNode = document.getElementById('probeRail')
@@ -259,6 +261,7 @@ if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not fou
 type DomCache = {
   hint: HTMLParagraphElement // cache lifetime: page
   telemetry: HTMLElement // cache lifetime: page
+  assetCards: HTMLElement // cache lifetime: page
   summary: HTMLElement // cache lifetime: page
   probeRail: HTMLElement // cache lifetime: page
   page: HTMLElement // cache lifetime: page
@@ -313,6 +316,7 @@ if (reportRequested) {
 const domCache: DomCache = {
   hint: hintNode,
   telemetry: telemetryNode,
+  assetCards: assetCardGridNode,
   summary: summaryPanelNode,
   probeRail: probeRailNode,
   page: pageNode,
@@ -1060,6 +1064,7 @@ function commitFrame(now: number): boolean {
     leftRouting,
     rightRouting,
   )
+  syncAssetCards(lastCommittedReport)
   syncSummaryPanel(lastCommittedReport)
   maybePublishReport()
   syncTelemetry(lastCommittedReport)
@@ -1334,8 +1339,55 @@ function syncSummaryPanel(report: DynamicLayoutReport | null): void {
   domCache.summary.textContent = formatSummaryPanel(report)
 }
 
+function syncAssetCards(report: DynamicLayoutReport | null): void {
+  if (report === null) {
+    domCache.assetCards.replaceChildren()
+    return
+  }
+
+  domCache.assetCards.replaceChildren(
+    createAssetCard('OpenAI', report.logos.openai),
+    createAssetCard('Claude', report.logos.claude),
+  )
+}
+
 function formatAngle(angle: number): string {
   return `${(angle / Math.PI).toFixed(2)}pi`
+}
+
+function createAssetCard(
+  label: string,
+  logo: DynamicLayoutReport['logos']['openai'] | DynamicLayoutReport['logos']['claude'],
+): HTMLElement {
+  const card = document.createElement('article')
+  card.className = 'asset-card'
+
+  const title = document.createElement('div')
+  title.className = 'asset-card-title'
+  title.textContent = label
+
+  card.append(
+    title,
+    createAssetRow('angle', formatAngle(logo.angle)),
+    createAssetRow('rect', `${Math.round(logo.rect.width)}x${Math.round(logo.rect.height)}`),
+    createAssetRow('origin', `${Math.round(logo.rect.x)}, ${Math.round(logo.rect.y)}`),
+    createAssetRow('layout hull', String(logo.layoutHullPoints)),
+    createAssetRow('hit hull', String(logo.hitHullPoints)),
+  )
+  return card
+}
+
+function createAssetRow(label: string, value: string): HTMLElement {
+  const row = document.createElement('div')
+  row.className = 'asset-card-row'
+  const labelNode = document.createElement('span')
+  labelNode.className = 'asset-card-label'
+  labelNode.textContent = label
+  const valueNode = document.createElement('span')
+  valueNode.className = 'asset-card-value'
+  valueNode.textContent = value
+  row.append(labelNode, valueNode)
+  return row
 }
 
 function formatSummaryPanel(report: DynamicLayoutReport): string {

@@ -105,3 +105,4 @@
 - 这条实现链很漂亮的一点是：资源解码、轮廓压缩、页面投影、band interval、text slot 被拆成了明确阶段
 - 如果以后还要扩展更多 asset-driven wrap demo，最应复用的不是页面代码，而是这条 asset → hull → interval → slot 的管线
 - `dynamic-layout` 新接入报告与 checker 后，也说明这条管线不只适合视觉演示，还能向自动化脚本暴露稳定摘要信号
+- 页面侧现在又继续把这些摘要拆成了 per-asset cards，详见 [[实现-dynamic-layout资产卡片与几何可视摘要]]
