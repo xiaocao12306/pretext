@@ -40,6 +40,7 @@ type MetricsDelta = {
 type JustificationReport = {
   status: 'ready' | 'error'
   requestId?: string
+  presetKey?: string
   environment?: EnvironmentFingerprint
   controls?: {
     colWidth: number
@@ -174,8 +175,7 @@ try {
       const requestId = `${Date.now()}-${preset.key}-${Math.random().toString(36).slice(2, 8)}`
       const url =
         `${pageServer.baseUrl}/demos/justification-comparison?report=1` +
-        `&width=${preset.width}` +
-        `&showIndicators=${preset.showIndicators ? '1' : '0'}` +
+        `&preset=${encodeURIComponent(preset.key)}` +
         `&requestId=${encodeURIComponent(requestId)}`
       const report = await loadHashReport<JustificationReport>(session, url, requestId, browser, timeoutMs)
       reports.push({ preset: preset.key, report })

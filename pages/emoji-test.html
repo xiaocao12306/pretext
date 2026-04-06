@@ -60,7 +60,7 @@
 <div id="output">Running...</div>
 <script type="module">
 import { clearNavigationReport, publishNavigationPhase, publishNavigationReport } from './report-utils.ts'
-import { EMOJI_PROBE_PRESETS } from './probe-presets.ts'
+import { EMOJI_PROBE_PRESETS, findEmojiProbePreset } from './probe-presets.ts'
 
 const emoji = [
   // Basic smileys
@@ -100,10 +100,13 @@ if (defaultPreset === undefined) throw new Error('emoji probe presets missing');
 const defaultSizes = defaultPreset.sizes;
 
 const params = new URLSearchParams(location.search);
+const requestedPreset = findPresetParam(params.get('preset'));
+const presetOverridesActive = params.has('sizes') || params.has('threshold');
+const activePresetKey = requestedPreset !== null && !presetOverridesActive ? requestedPreset.key : null;
 const requestId = params.get('requestId') ?? undefined;
 const reportRequested = params.get('report') === '1';
-const thresholdPx = parseThresholdParam(params.get('threshold'));
-const sizes = parseNumberListParam(params.get('sizes'), defaultSizes);
+const thresholdPx = parseThresholdParam(params.get('threshold'), requestedPreset?.threshold ?? defaultPreset.threshold);
+const sizes = parseNumberListParam(params.get('sizes'), requestedPreset?.sizes ?? defaultSizes);
 const outputNode = document.getElementById('output');
 if (!(outputNode instanceof HTMLDivElement)) throw new Error('#output not found');
 const summaryNode = document.getElementById('summaryPanel');
@@ -296,6 +299,7 @@ if (sz16) {
 
 const report = withRequestId({
   status: 'ready',
+  presetKey: activePresetKey ?? undefined,
   environment: getEnvironmentFingerprint(),
   emojiCount: emoji.length,
   fontCount: fonts.length,
@@ -334,6 +338,11 @@ function withRequestId(report) {
   return requestId === undefined ? report : { ...report, requestId };
 }
 
+function findPresetParam(raw) {
+  if (raw === null || raw.trim() === '') return null;
+  return findEmojiProbePreset(raw.trim());
+}
+
 function parseNumberListParam(raw, fallback) {
   if (raw === null || raw.trim() === '') return fallback.slice();
   const parsed = raw
@@ -343,17 +352,17 @@ function parseNumberListParam(raw, fallback) {
   return parsed.length === 0 ? fallback.slice() : parsed;
 }
 
-function parseThresholdParam(raw) {
-  if (raw === null || raw.trim() === '') return 0.5;
+function parseThresholdParam(raw, fallback) {
+  if (raw === null || raw.trim() === '') return fallback;
   const parsed = Number.parseFloat(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0.5;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function renderProbeRail() {
   const presets = EMOJI_PROBE_PRESETS.map(preset => ({
     label: preset.label,
-    href: preset.key === 'default' ? buildProbeHref({}) : buildProbeHref({ sizes: preset.sizes, threshold: preset.threshold }),
-    active: arraysEqual(sizes, preset.sizes) && thresholdPx === preset.threshold,
+    href: buildProbeHref({ presetKey: preset.key }),
+    active: activePresetKey === preset.key || (arraysEqual(sizes, preset.sizes) && thresholdPx === preset.threshold),
   }));
 
   probeRailNode.replaceChildren(...presets.map(createProbeLink));
@@ -369,8 +378,12 @@ function createProbeLink(definition) {
 
 function buildProbeHref(options) {
   const next = new URLSearchParams();
-  if (options.sizes !== undefined) next.set('sizes', options.sizes.join(','));
-  if (options.threshold !== undefined) next.set('threshold', String(options.threshold));
+  if (options.presetKey !== undefined) {
+    next.set('preset', options.presetKey);
+  } else {
+    if (options.sizes !== undefined) next.set('sizes', options.sizes.join(','));
+    if (options.threshold !== undefined) next.set('threshold', String(options.threshold));
+  }
   const query = next.toString();
   return query.length === 0 ? location.pathname : `${location.pathname}?${query}`;
 }
@@ -385,13 +398,14 @@ function arraysEqual(left, right) {
 
 function formatSummary(report) {
   const lines = [
+    report.presetKey === undefined ? null : `preset ${report.presetKey}`,
     `threshold ${report.thresholdPx.toFixed(2)}px`,
     `sizes ${report.sizes.join(', ')}`,
     `emoji ${report.emojiCount}  fonts ${report.fontCount}  mismatch-observations ${report.totalMismatchObservations}`,
     report.constantAcrossAllSizes
       ? 'all sampled sizes stay font-constant'
       : `variable sizes ${report.variableSizes.join(', ') || 'none'}`,
-  ];
+  ].filter(Boolean);
 
   for (const summary of report.sizeSummaries) {
     lines.push(

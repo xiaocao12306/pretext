@@ -42,6 +42,7 @@ type EmojiSizeSummary = {
 type EmojiReport = {
   status: 'ready' | 'error'
   requestId?: string
+  presetKey?: string
   environment?: EnvironmentFingerprint
   emojiCount?: number
   fontCount?: number
@@ -166,8 +167,7 @@ try {
       const url =
         `${pageServer.baseUrl}/emoji-test?report=1` +
         `&requestId=${encodeURIComponent(requestId)}` +
-        `&sizes=${encodeURIComponent(preset.sizes.join(','))}` +
-        `&threshold=${encodeURIComponent(String(preset.threshold))}`
+        `&preset=${encodeURIComponent(preset.key)}`
       const report = await loadHashReport<EmojiReport>(session, url, requestId, browser, timeoutMs)
       console.log(`[preset:${preset.key}]`)
       printReport(report)

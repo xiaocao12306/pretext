@@ -14,13 +14,7 @@ mountActions('dynamicLayoutActions', [
   { label: 'Live demo', href: '../dynamic-layout' },
   ...DYNAMIC_LAYOUT_PROBE_PRESETS.map(preset => ({
     label: preset.label,
-    href: buildHref('../dynamic-layout', {
-      pageWidth: preset.pageWidth,
-      pageHeight: preset.pageHeight,
-      openaiAngle: preset.openaiAngle === 0 ? null : preset.openaiAngle.toFixed(6),
-      claudeAngle: preset.claudeAngle === 0 ? null : preset.claudeAngle.toFixed(6),
-      showDiagnostics: preset.showDiagnostics ? '1' : '0',
-    }),
+    href: buildHref('../dynamic-layout', { preset: preset.key }),
   })),
 ])
 
@@ -28,30 +22,18 @@ mountActions('editorialEngineActions', [
   { label: 'Live demo', href: '../editorial-engine' },
   ...EDITORIAL_ENGINE_PROBE_PRESETS.map(preset => ({
     label: preset.label,
-    href: buildHref('../editorial-engine', {
-      pageWidth: preset.pageWidth,
-      pageHeight: preset.pageHeight,
-      orbPreset: preset.orbPreset === 'default' ? null : preset.orbPreset,
-      animate: preset.animate ? '1' : '0',
-      showDiagnostics: preset.showDiagnostics ? '1' : '0',
-    }),
+    href: buildHref('../editorial-engine', { preset: preset.key }),
   })),
 ])
 
 mountActions('justificationActions', JUSTIFICATION_PROBE_PRESETS.map(preset => ({
   label: preset.label,
-  href: buildHref('../justification-comparison', {
-    width: preset.width,
-    showIndicators: preset.showIndicators ? '1' : '0',
-  }),
+  href: buildHref('../justification-comparison', { preset: preset.key }),
 })))
 
 mountActions('emojiActions', EMOJI_PROBE_PRESETS.map(preset => ({
   label: preset.label,
-  href: buildHref('../emoji-test', {
-    sizes: preset.sizes.join(','),
-    threshold: String(preset.threshold),
-  }),
+  href: buildHref('../emoji-test', { preset: preset.key }),
 })))
 
 function mountActions(id: string, actions: ActionDefinition[]): void {

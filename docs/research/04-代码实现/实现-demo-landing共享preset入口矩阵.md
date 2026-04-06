@@ -95,3 +95,4 @@ HTML 现在只保留：
 - `pages/demos/index` 现在更像一个研究型 demo 控制台，而不是静态链接页
 - 共享 preset 词汇已经从 checker 层、页内 rail 层继续上推到 landing 层，Phase 3 和 Phase 4 的接口面因此更一致了
 - 这一步也让后续继续扩 demo suite、snapshot 或 landing 分组时，不必再把一堆 query 字面量抄来抄去
+- landing 随后又继续改成直接输出 `?preset=...`，详见 [[实现-preset-key路由与报告对齐]]

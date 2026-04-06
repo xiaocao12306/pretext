@@ -22,7 +22,11 @@ This page's made to show off our layout APIs:
 - There is no DOM text measurement loop feeding layout.
 */
 import { layoutNextLine, prepareWithSegments, walkLineRanges, type LayoutCursor, type PreparedTextWithSegments } from '../../src/layout.ts'
-import { DYNAMIC_LAYOUT_PROBE_PRESETS } from '../probe-presets.ts'
+import {
+  DYNAMIC_LAYOUT_PROBE_PRESETS,
+  findDynamicLayoutProbePreset,
+  type DynamicLayoutProbePreset,
+} from '../probe-presets.ts'
 import { clearNavigationReport, publishNavigationPhase, publishNavigationReport } from '../report-utils.ts'
 import { BODY_COPY } from './dynamic-layout-text.ts'
 import openaiLogoUrl from '../assets/openai-symbol.svg'
@@ -160,6 +164,7 @@ type WrapHulls = {
 type DynamicLayoutReport = {
   status: 'ready' | 'error'
   requestId?: string
+  presetKey?: string
   environment: EnvironmentFingerprint
   page: {
     width: number
@@ -264,11 +269,22 @@ type DomCache = {
 
 const preparedByKey = new Map<string, PreparedTextWithSegments>()
 const params = new URLSearchParams(location.search)
+const requestedPreset = findPresetParam(params.get('preset'))
+const presetOverridesActive =
+  params.has('pageWidth') ||
+  params.has('pageHeight') ||
+  params.has('openaiAngle') ||
+  params.has('claudeAngle') ||
+  params.has('showDiagnostics')
+const activePresetKey = requestedPreset !== null && !presetOverridesActive ? requestedPreset.key : null
 const requestId = params.get('requestId') ?? undefined
 const reportRequested = params.get('report') === '1'
-const pageWidthOverride = parseDimensionParam(params.get('pageWidth'))
-const pageHeightOverride = parseDimensionParam(params.get('pageHeight'))
-const showDiagnostics = parseBooleanParam(params.get('showDiagnostics')) ?? (pageWidthOverride !== null || pageHeightOverride !== null || reportRequested)
+const pageWidthOverride = parseDimensionParam(params.get('pageWidth')) ?? requestedPreset?.pageWidth ?? null
+const pageHeightOverride = parseDimensionParam(params.get('pageHeight')) ?? requestedPreset?.pageHeight ?? null
+const showDiagnostics =
+  parseBooleanParam(params.get('showDiagnostics')) ??
+  requestedPreset?.showDiagnostics ??
+  (pageWidthOverride !== null || pageHeightOverride !== null || reportRequested)
 const scheduled = { value: false }
 const events: { mousemove: MouseEvent | null; click: MouseEvent | null; blur: boolean } = {
   mousemove: null,
@@ -282,8 +298,8 @@ let committedTextProjection: TextProjection | null = null
 let reportPublished = false
 let lastCommittedReport: DynamicLayoutReport | null = null
 const logoAnimations: { openai: LogoAnimationState; claude: LogoAnimationState } = {
-  openai: { angle: parseAngleParam(params.get('openaiAngle')), spin: null },
-  claude: { angle: parseAngleParam(params.get('claudeAngle')), spin: null },
+  openai: { angle: parseAngleParam(params.get('openaiAngle'), requestedPreset?.openaiAngle ?? 0), spin: null },
+  claude: { angle: parseAngleParam(params.get('claudeAngle'), requestedPreset?.claudeAngle ?? 0), spin: null },
 }
 
 if (reportRequested) {
@@ -1110,6 +1126,7 @@ function buildDynamicLayoutReport(
 ): DynamicLayoutReport {
   return {
     status: 'ready',
+    presetKey: activePresetKey ?? undefined,
     environment: getEnvironmentFingerprint(),
     page: {
       width: layout.pageWidth,
@@ -1240,7 +1257,7 @@ function renderProbeRail(): void {
     },
     ...DYNAMIC_LAYOUT_PROBE_PRESETS.map(preset => ({
       label: preset.label,
-      href: buildProbeHref(preset),
+      href: buildProbeHref({ presetKey: preset.key }),
       active: isProbePresetActive(preset),
     })),
   ]
@@ -1248,14 +1265,9 @@ function renderProbeRail(): void {
   domCache.probeRail.replaceChildren(...presets.map(createProbeLink))
 }
 
-function isProbePresetActive(preset: {
-  pageWidth: number
-  pageHeight: number
-  openaiAngle: number
-  claudeAngle: number
-  showDiagnostics: boolean
-}): boolean {
+function isProbePresetActive(preset: DynamicLayoutProbePreset): boolean {
   return (
+    activePresetKey === preset.key ||
     pageWidthOverride === preset.pageWidth &&
     pageHeightOverride === preset.pageHeight &&
     showDiagnostics === preset.showDiagnostics &&
@@ -1273,6 +1285,7 @@ function createProbeLink(definition: { label: string; href: string; active: bool
 }
 
 function buildProbeHref(options: {
+  presetKey?: string
   pageWidth?: number
   pageHeight?: number
   openaiAngle?: number
@@ -1280,11 +1293,15 @@ function buildProbeHref(options: {
   showDiagnostics?: boolean
 }): string {
   const next = new URLSearchParams()
-  if (options.pageWidth !== undefined) next.set('pageWidth', String(options.pageWidth))
-  if (options.pageHeight !== undefined) next.set('pageHeight', String(options.pageHeight))
-  if (options.openaiAngle !== undefined && options.openaiAngle !== 0) next.set('openaiAngle', options.openaiAngle.toFixed(6))
-  if (options.claudeAngle !== undefined && options.claudeAngle !== 0) next.set('claudeAngle', options.claudeAngle.toFixed(6))
-  if (options.showDiagnostics !== undefined) next.set('showDiagnostics', options.showDiagnostics ? '1' : '0')
+  if (options.presetKey !== undefined) {
+    next.set('preset', options.presetKey)
+  } else {
+    if (options.pageWidth !== undefined) next.set('pageWidth', String(options.pageWidth))
+    if (options.pageHeight !== undefined) next.set('pageHeight', String(options.pageHeight))
+    if (options.openaiAngle !== undefined && options.openaiAngle !== 0) next.set('openaiAngle', options.openaiAngle.toFixed(6))
+    if (options.claudeAngle !== undefined && options.claudeAngle !== 0) next.set('claudeAngle', options.claudeAngle.toFixed(6))
+    if (options.showDiagnostics !== undefined) next.set('showDiagnostics', options.showDiagnostics ? '1' : '0')
+  }
   const query = next.toString()
   return query.length === 0 ? location.pathname : `${location.pathname}?${query}`
 }
@@ -1330,10 +1347,15 @@ function formatNullableWidth(value: number | null): string {
   return value === null ? 'none' : `${value.toFixed(1)}px`
 }
 
-function parseAngleParam(raw: string | null): number {
-  if (raw === null) return 0
+function findPresetParam(raw: string | null) {
+  if (raw === null || raw.trim() === '') return null
+  return findDynamicLayoutProbePreset(raw.trim())
+}
+
+function parseAngleParam(raw: string | null, fallback: number = 0): number {
+  if (raw === null) return fallback
   const parsed = Number.parseFloat(raw)
-  if (!Number.isFinite(parsed)) return 0
+  if (!Number.isFinite(parsed)) return fallback
   return parsed
 }
 

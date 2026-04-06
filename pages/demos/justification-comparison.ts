@@ -1,5 +1,5 @@
 import { clearNavigationReport, publishNavigationPhase, publishNavigationReport } from '../report-utils.ts'
-import { JUSTIFICATION_PROBE_PRESETS } from '../probe-presets.ts'
+import { JUSTIFICATION_PROBE_PRESETS, findJustificationProbePreset } from '../probe-presets.ts'
 import {
   createDemoResources,
   buildDemoFrame,
@@ -48,6 +48,7 @@ type MetricsDelta = {
 type JustificationReport = {
   status: 'ready' | 'error'
   requestId?: string
+  presetKey?: string
   environment: EnvironmentFingerprint
   controls: DemoControls
   normalSpaceWidth: number
@@ -81,10 +82,20 @@ const dom = createDomCache()
 const probeRailNode = document.getElementById('probeRail')
 if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found')
 const params = new URLSearchParams(location.search)
+const requestedPreset = findPresetParam(params.get('preset'))
+const presetOverridesActive = params.has('width') || params.has('showIndicators')
+const activePresetKey = requestedPreset !== null && !presetOverridesActive ? requestedPreset.key : null
 const requestId = params.get('requestId') ?? undefined
 const reportRequested = params.get('report') === '1'
-const requestedWidth = parseWidthParam(params.get('width'), Number.parseInt(dom.slider.value, 10), dom.slider)
-const requestedShowIndicators = parseBooleanParam(params.get('showIndicators'), dom.showIndicators.checked)
+const requestedWidth = parseWidthParam(
+  params.get('width'),
+  requestedPreset?.width ?? Number.parseInt(dom.slider.value, 10),
+  dom.slider,
+)
+const requestedShowIndicators = parseBooleanParam(
+  params.get('showIndicators'),
+  requestedPreset?.showIndicators ?? dom.showIndicators.checked,
+)
 
 const state: State = {
   controls: {
@@ -198,6 +209,7 @@ function buildReport(
 ): JustificationReport {
   return {
     status: 'ready',
+    presetKey: activePresetKey ?? undefined,
     environment: getEnvironmentFingerprint(),
     controls: frame.controls,
     normalSpaceWidth: Number(normalSpaceWidth.toFixed(3)),
@@ -282,8 +294,10 @@ function parseBooleanParam(raw: string | null, fallback: boolean): boolean {
 function renderProbeRail(controls: DemoControls): void {
   const presets = JUSTIFICATION_PROBE_PRESETS.map(preset => ({
     label: preset.label,
-    href: buildProbeHref({ width: preset.width, showIndicators: preset.showIndicators }),
-    active: controls.colWidth === preset.width && controls.showIndicators === preset.showIndicators,
+    href: buildProbeHref({ presetKey: preset.key }),
+    active:
+      activePresetKey === preset.key ||
+      (controls.colWidth === preset.width && controls.showIndicators === preset.showIndicators),
   }))
   probeRailNode.replaceChildren(...presets.map(createProbeLink))
 }
@@ -296,11 +310,20 @@ function createProbeLink(definition: { label: string; href: string; active: bool
   return element
 }
 
-function buildProbeHref(options: { width: number; showIndicators: boolean }): string {
+function buildProbeHref(options: { presetKey?: string; width?: number; showIndicators?: boolean }): string {
   const next = new URLSearchParams()
-  next.set('width', String(options.width))
-  next.set('showIndicators', options.showIndicators ? '1' : '0')
+  if (options.presetKey !== undefined) {
+    next.set('preset', options.presetKey)
+  } else {
+    if (options.width !== undefined) next.set('width', String(options.width))
+    if (options.showIndicators !== undefined) next.set('showIndicators', options.showIndicators ? '1' : '0')
+  }
   return `${location.pathname}?${next.toString()}`
+}
+
+function findPresetParam(raw: string | null) {
+  if (raw === null || raw.trim() === '') return null
+  return findJustificationProbePreset(raw.trim())
 }
 
 function withRequestId(report: JustificationReport): JustificationReport {

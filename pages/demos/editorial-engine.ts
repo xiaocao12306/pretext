@@ -6,7 +6,11 @@ import {
   type LayoutCursor,
   type PreparedTextWithSegments,
 } from '../../src/layout.ts'
-import { EDITORIAL_ENGINE_PROBE_PRESETS, type EditorialEngineProbePreset } from '../probe-presets.ts'
+import {
+  EDITORIAL_ENGINE_PROBE_PRESETS,
+  findEditorialEngineProbePreset,
+  type EditorialEngineProbePreset,
+} from '../probe-presets.ts'
 import { clearNavigationReport, publishNavigationPhase, publishNavigationReport } from '../report-utils.ts'
 
 const BODY_FONT = '18px "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, serif'
@@ -199,6 +203,7 @@ type RoutingAccumulator = {
 type EditorialEngineReport = {
   status: 'ready' | 'error'
   requestId?: string
+  presetKey?: string
   environment: EnvironmentFingerprint
   page: {
     width: number
@@ -378,13 +383,24 @@ const orbDefs: OrbDefinition[] = [
 ]
 
 const params = new URLSearchParams(location.search)
+const requestedPreset = findPresetParam(params.get('preset'))
+const presetOverridesActive =
+  params.has('pageWidth') ||
+  params.has('pageHeight') ||
+  params.has('showDiagnostics') ||
+  params.has('orbPreset') ||
+  params.has('animate')
+const activePresetKey = requestedPreset !== null && !presetOverridesActive ? requestedPreset.key : null
 const requestId = params.get('requestId') ?? undefined
 const reportRequested = params.get('report') === '1'
-const pageWidthOverride = parseDimensionParam(params.get('pageWidth'))
-const pageHeightOverride = parseDimensionParam(params.get('pageHeight'))
-const showDiagnostics = parseBooleanParam(params.get('showDiagnostics')) ?? (reportRequested || pageWidthOverride !== null || pageHeightOverride !== null)
-const orbPreset = parseOrbPreset(params.get('orbPreset'))
-const animateOrbs = parseBooleanParam(params.get('animate')) ?? !reportRequested
+const pageWidthOverride = parseDimensionParam(params.get('pageWidth')) ?? requestedPreset?.pageWidth ?? null
+const pageHeightOverride = parseDimensionParam(params.get('pageHeight')) ?? requestedPreset?.pageHeight ?? null
+const showDiagnostics =
+  parseBooleanParam(params.get('showDiagnostics')) ??
+  requestedPreset?.showDiagnostics ??
+  (reportRequested || pageWidthOverride !== null || pageHeightOverride !== null)
+const orbPreset = parseOrbPreset(params.get('orbPreset'), requestedPreset?.orbPreset ?? 'default')
+const animateOrbs = parseBooleanParam(params.get('animate')) ?? requestedPreset?.animate ?? !reportRequested
 
 if (reportRequested) {
   clearNavigationReport()
@@ -1186,6 +1202,7 @@ function buildEditorialEngineReport(
 
   return {
     status: 'ready',
+    presetKey: activePresetKey ?? undefined,
     environment: getEnvironmentFingerprint(),
     page: {
       width: pageWidth,
@@ -1300,7 +1317,7 @@ function renderProbeRail(): void {
     },
     ...EDITORIAL_ENGINE_PROBE_PRESETS.map(preset => ({
       label: preset.label,
-      href: buildPresetHref(preset),
+      href: buildPresetHref({ presetKey: preset.key }),
       active: isProbePresetActive(preset),
     })),
   ]
@@ -1310,6 +1327,7 @@ function renderProbeRail(): void {
 
 function isProbePresetActive(preset: EditorialEngineProbePreset): boolean {
   return (
+    activePresetKey === preset.key ||
     pageWidthOverride === preset.pageWidth &&
     pageHeightOverride === preset.pageHeight &&
     orbPreset === preset.orbPreset &&
@@ -1327,6 +1345,7 @@ function createProbeLink(definition: { label: string; href: string; active: bool
 }
 
 function buildPresetHref(options: {
+  presetKey?: string
   pageWidth?: number
   pageHeight?: number
   orbPreset?: OrbPreset
@@ -1334,11 +1353,15 @@ function buildPresetHref(options: {
   showDiagnostics?: boolean
 }): string {
   const next = new URLSearchParams()
-  if (options.pageWidth !== undefined) next.set('pageWidth', String(options.pageWidth))
-  if (options.pageHeight !== undefined) next.set('pageHeight', String(options.pageHeight))
-  if (options.orbPreset !== undefined && options.orbPreset !== 'default') next.set('orbPreset', options.orbPreset)
-  if (options.animate !== undefined && !options.animate) next.set('animate', '0')
-  if (options.showDiagnostics !== undefined) next.set('showDiagnostics', options.showDiagnostics ? '1' : '0')
+  if (options.presetKey !== undefined) {
+    next.set('preset', options.presetKey)
+  } else {
+    if (options.pageWidth !== undefined) next.set('pageWidth', String(options.pageWidth))
+    if (options.pageHeight !== undefined) next.set('pageHeight', String(options.pageHeight))
+    if (options.orbPreset !== undefined && options.orbPreset !== 'default') next.set('orbPreset', options.orbPreset)
+    if (options.animate !== undefined && !options.animate) next.set('animate', '0')
+    if (options.showDiagnostics !== undefined) next.set('showDiagnostics', options.showDiagnostics ? '1' : '0')
+  }
   const query = next.toString()
   return query.length === 0 ? location.pathname : `${location.pathname}?${query}`
 }
@@ -1528,14 +1551,20 @@ function parseBooleanParam(raw: string | null): boolean | null {
   return null
 }
 
-function parseOrbPreset(raw: string | null): OrbPreset {
+function findPresetParam(raw: string | null) {
+  if (raw === null || raw.trim() === '') return null
+  return findEditorialEngineProbePreset(raw.trim())
+}
+
+function parseOrbPreset(raw: string | null, fallback: OrbPreset = 'default'): OrbPreset {
   switch (raw) {
+    case 'default':
     case 'stacked':
     case 'diagonal':
     case 'corridor':
       return raw
     default:
-      return 'default'
+      return fallback
   }
 }
 

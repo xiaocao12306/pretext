@@ -13,6 +13,7 @@ import {
 type DynamicLayoutReport = {
   status: 'ready' | 'error'
   requestId?: string
+  presetKey?: string
   page?: {
     width: number
     height: number
@@ -269,13 +270,17 @@ try {
       `${Date.now()}-${run.scenario.width}x${run.scenario.height}-${run.anglePair.openaiAngle}:${run.anglePair.claudeAngle}-` +
       `${Math.random().toString(36).slice(2, 8)}`
     const url =
-      `${pageServer.baseUrl}/demos/dynamic-layout?report=1` +
-      `&requestId=${encodeURIComponent(requestId)}` +
-      `&pageWidth=${run.scenario.width}` +
-      `&pageHeight=${run.scenario.height}` +
-      `&openaiAngle=${encodeURIComponent(run.anglePair.openaiAngle)}` +
-      `&claudeAngle=${encodeURIComponent(run.anglePair.claudeAngle)}` +
-      (run.showDiagnostics === undefined ? '' : `&showDiagnostics=${run.showDiagnostics ? '1' : '0'}`)
+      run.presetKey === undefined
+        ? `${pageServer.baseUrl}/demos/dynamic-layout?report=1` +
+          `&requestId=${encodeURIComponent(requestId)}` +
+          `&pageWidth=${run.scenario.width}` +
+          `&pageHeight=${run.scenario.height}` +
+          `&openaiAngle=${encodeURIComponent(run.anglePair.openaiAngle)}` +
+          `&claudeAngle=${encodeURIComponent(run.anglePair.claudeAngle)}` +
+          (run.showDiagnostics === undefined ? '' : `&showDiagnostics=${run.showDiagnostics ? '1' : '0'}`)
+        : `${pageServer.baseUrl}/demos/dynamic-layout?report=1` +
+          `&requestId=${encodeURIComponent(requestId)}` +
+          `&preset=${encodeURIComponent(run.presetKey)}`
     const report = await loadHashReport<DynamicLayoutReport>(session, url, requestId, browser, timeoutMs)
     reports.push({ preset: run.presetKey, scenario: run.scenario, anglePair: run.anglePair, report })
     printReport(report, run)
