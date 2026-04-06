@@ -81,6 +81,8 @@ type State = {
 const dom = createDomCache()
 const probeRailNode = document.getElementById('probeRail')
 if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found')
+const summaryPanelNode = document.getElementById('summaryPanel')
+if (!(summaryPanelNode instanceof HTMLElement)) throw new Error('#summaryPanel not found')
 const params = new URLSearchParams(location.search)
 const requestedPreset = findPresetParam(params.get('preset'))
 const presetOverridesActive = params.has('width') || params.has('showIndicators')
@@ -182,6 +184,14 @@ function scheduleCssOverlaySync(): void {
       resources.normalSpaceWidth,
       { measureWhenHidden: reportRequested },
     )
+    syncSummaryPanel(
+      buildReport(
+        latestFrame,
+        resources.normalSpaceWidth,
+        latestCssOverlaySummary,
+        dom.cssCol.getBoundingClientRect().height,
+      ),
+    )
     maybePublishReport()
   })
 }
@@ -241,6 +251,10 @@ function toColumnMetrics(metrics: QualityMetrics, totalHeight: number): ColumnMe
   }
 }
 
+function syncSummaryPanel(report: JustificationReport): void {
+  summaryPanelNode.textContent = formatSummary(report)
+}
+
 function buildMetricsDelta(
   candidate: QualityMetrics,
   baseline: QualityMetrics,
@@ -251,6 +265,25 @@ function buildMetricsDelta(
     riverCountDelta: candidate.riverCount - baseline.riverCount,
     lineCountDelta: candidate.lineCount - baseline.lineCount,
   }
+}
+
+function formatSummary(report: JustificationReport): string {
+  const controls = report.controls
+  return [
+    `preset ${report.presetKey ?? 'manual'}  width ${controls.colWidth}px  indicators ${controls.showIndicators ? 'on' : 'off'}`,
+    `best avg/max/river ${report.bestColumns.avgDeviation} / ${report.bestColumns.maxDeviation} / ${report.bestColumns.riverCount}`,
+    `css lines ${report.columns.css.lineCount} rivers ${report.cssOverlayRiverCount}  hyphen lines ${report.columns.hyphen.lineCount}  optimal lines ${report.columns.optimal.lineCount}`,
+    `Δhyphen-css avg ${formatSignedPercent(report.comparisons.hyphenVsCss.avgDeviationDelta)} max ${formatSignedPercent(report.comparisons.hyphenVsCss.maxDeviationDelta)} rivers ${formatSignedInt(report.comparisons.hyphenVsCss.riverCountDelta)}`,
+    `Δoptimal-css avg ${formatSignedPercent(report.comparisons.optimalVsCss.avgDeviationDelta)} max ${formatSignedPercent(report.comparisons.optimalVsCss.maxDeviationDelta)} rivers ${formatSignedInt(report.comparisons.optimalVsCss.riverCountDelta)}`,
+  ].join('\n')
+}
+
+function formatSignedPercent(value: number): string {
+  return `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`
+}
+
+function formatSignedInt(value: number): string {
+  return `${value >= 0 ? '+' : ''}${value}`
 }
 
 function pickBestColumn(

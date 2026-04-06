@@ -47,6 +47,17 @@
       border-color: #9e876c;
       color: #473b2d;
     }
+    .summary-panel {
+      margin: 0 auto 18px;
+      max-width: 780px;
+      padding: 12px 14px;
+      border: 1px solid #ddd4c8;
+      border-radius: 10px;
+      background: #f5f2ed;
+      color: #5f5447;
+      font: 12px/1.5 "SF Mono", ui-monospace, monospace;
+      white-space: pre-wrap;
+    }
     .controls label {
       font: 500 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
       color: #8a7f70; text-transform: uppercase; letter-spacing: 0.5px;
@@ -154,6 +165,7 @@
     <p class="subtitle" style="text-align:center">Visualizes typography rivers, spacing variance, and how hyphenation and global line-breaking change justified text.</p>
 
     <nav id="probeRail" class="probe-rail" aria-label="Justification probe presets"></nav>
+    <pre id="summaryPanel" class="summary-panel" aria-live="polite"></pre>
 
     <div class="controls">
       <label for="widthSlider">Column width</label>
