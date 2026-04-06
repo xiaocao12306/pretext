@@ -44,6 +44,54 @@
     color: #c7edff;
   }
   .panel[hidden] { display: none; }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin: 0 0 16px;
+  }
+  .summary-grid[hidden] { display: none; }
+  .summary-card {
+    padding: 12px 14px;
+    border: 1px solid #222;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(18, 18, 18, 0.98), rgba(12, 12, 12, 0.96));
+    font: 12px/1.45 "SF Mono", monospace;
+    color: #d5d5d5;
+  }
+  .summary-card.is-constant { border-color: rgba(129, 199, 132, 0.32); }
+  .summary-card.is-variable { border-color: rgba(239, 83, 80, 0.32); }
+  .summary-card-size {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 0 8px;
+    color: #fff;
+    font-weight: 700;
+  }
+  .summary-card-status {
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 1;
+  }
+  .summary-card-status.is-constant {
+    background: rgba(129, 199, 132, 0.14);
+    color: #a5d6a7;
+  }
+  .summary-card-status.is-variable {
+    background: rgba(239, 83, 80, 0.14);
+    color: #ef9a9a;
+  }
+  .summary-card-meta {
+    color: #8e8e8e;
+    margin: 0 0 6px;
+  }
+  .summary-card-corr { color: #ffcc80; }
+  .summary-card-worst {
+    color: #9ecfff;
+    margin-top: 6px;
+  }
   #output { font: 13px "SF Mono", monospace; white-space: pre-wrap; background: #111; border: 1px solid #222; border-radius: 8px; padding: 16px; }
   .match { color: #81c784; }
   .mismatch { color: #ef5350; }
@@ -57,6 +105,7 @@
 <p class="sub">Tests whether emoji canvas/DOM diff is constant across fonts (font-independent) or varies per font.</p>
 <nav id="probeRail" class="probe-rail" aria-label="Emoji probe presets"></nav>
 <div id="summaryPanel" class="panel" hidden></div>
+<section id="sizeSummaryGrid" class="summary-grid" hidden aria-label="Emoji size summary cards"></section>
 <div id="output">Running...</div>
 <script type="module">
 import { clearNavigationReport, publishNavigationPhase, publishNavigationReport } from './report-utils.ts'
@@ -111,6 +160,8 @@ const outputNode = document.getElementById('output');
 if (!(outputNode instanceof HTMLDivElement)) throw new Error('#output not found');
 const summaryNode = document.getElementById('summaryPanel');
 if (!(summaryNode instanceof HTMLDivElement)) throw new Error('#summaryPanel not found');
+const summaryGridNode = document.getElementById('sizeSummaryGrid');
+if (!(summaryGridNode instanceof HTMLElement)) throw new Error('#sizeSummaryGrid not found');
 const probeRailNode = document.getElementById('probeRail');
 if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found');
 
@@ -316,6 +367,7 @@ document.body.removeChild(container);
 outputNode.innerHTML = out;
 summaryNode.hidden = false;
 summaryNode.textContent = formatSummary(report);
+renderSummaryGrid(report);
 
 if (reportRequested) {
   publishNavigationReport(report);
@@ -416,6 +468,56 @@ function formatSummary(report) {
   }
 
   return lines.join('\n');
+}
+
+function renderSummaryGrid(report) {
+  const summaries = report.sizeSummaries ?? [];
+  if (summaries.length === 0) {
+    summaryGridNode.hidden = true;
+    summaryGridNode.replaceChildren();
+    return;
+  }
+
+  summaryGridNode.hidden = false;
+  summaryGridNode.replaceChildren(...summaries.map(createSummaryCard));
+}
+
+function createSummaryCard(summary) {
+  const element = document.createElement('article');
+  element.className = summary.constantAcrossFonts ? 'summary-card is-constant' : 'summary-card is-variable';
+
+  const sizeRow = document.createElement('div');
+  sizeRow.className = 'summary-card-size';
+  const sizeLabel = document.createElement('span');
+  sizeLabel.textContent = `${summary.size}px`;
+  const status = document.createElement('span');
+  status.className = summary.constantAcrossFonts ? 'summary-card-status is-constant' : 'summary-card-status is-variable';
+  status.textContent = summary.constantAcrossFonts ? 'constant' : 'varies';
+  sizeRow.append(sizeLabel, status);
+
+  const mismatchRow = document.createElement('div');
+  mismatchRow.className = 'summary-card-meta';
+  mismatchRow.textContent = `mismatch ${summary.mismatchedEmojiCount}/${emoji.length}`;
+
+  const corrRow = document.createElement('div');
+  corrRow.className = 'summary-card-corr';
+  corrRow.textContent =
+    `corr ${summary.correctionDiffs.length === 0 ? 'none' : summary.correctionDiffs.map(diff => `${diff > 0 ? '+' : ''}${diff.toFixed(2)}px`).join(', ')}`;
+
+  const varianceRow = document.createElement('div');
+  varianceRow.className = 'summary-card-meta';
+  varianceRow.textContent = summary.constantAcrossFonts
+    ? 'variance 0.00px'
+    : `variance ${summary.maxVariance.toFixed(2)}px`;
+
+  element.append(sizeRow, mismatchRow, corrRow, varianceRow);
+  if (summary.worstEmoji !== null) {
+    const worstRow = document.createElement('div');
+    worstRow.className = 'summary-card-worst';
+    worstRow.textContent = `worst ${summary.worstEmoji}`;
+    element.append(worstRow);
+  }
+  return element;
 }
 
 function getEnvironmentFingerprint() {

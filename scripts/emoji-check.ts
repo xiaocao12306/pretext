@@ -56,6 +56,14 @@ type EmojiReport = {
   message?: string
 }
 
+type EmojiSummaryRow = {
+  preset: string
+  constantAcrossAllSizes: boolean
+  totalMismatchObservations: number
+  variableSizeCount: number
+  maxVariance: number
+}
+
 function parseStringFlag(name: string): string | null {
   const prefix = `--${name}=`
   const arg = process.argv.find(value => value.startsWith(prefix))
@@ -131,6 +139,54 @@ function validatePresetReport(report: EmojiReport, expectedPresetKey: EmojiProbe
   return false
 }
 
+function formatRange(min: number, max: number): string {
+  return min === max ? String(min) : `${min}..${max}`
+}
+
+function toSummaryRow(entry: { preset: EmojiProbePreset['key']; report: EmojiReport }): EmojiSummaryRow | null {
+  const report = entry.report
+  if (report.status === 'error') return null
+  const sizeSummaries = report.sizeSummaries ?? []
+  const variances = sizeSummaries.map(summary => summary.maxVariance)
+  return {
+    preset: report.presetKey ?? entry.preset,
+    constantAcrossAllSizes: report.constantAcrossAllSizes ?? false,
+    totalMismatchObservations: report.totalMismatchObservations ?? 0,
+    variableSizeCount: (report.variableSizes ?? []).length,
+    maxVariance: variances.length === 0 ? 0 : Math.max(...variances),
+  }
+}
+
+function printMatrixSummary(entries: Array<{ preset: EmojiProbePreset['key']; report: EmojiReport }>): void {
+  const rows = entries
+    .map(toSummaryRow)
+    .filter((row): row is EmojiSummaryRow => row !== null)
+
+  console.log('matrix summary:')
+  console.log(`  runs ${entries.length} ready ${rows.length} error ${entries.length - rows.length}`)
+  if (rows.length === 0) return
+
+  const constantCount = rows.filter(row => row.constantAcrossAllSizes).length
+  const mismatchObservations = rows.map(row => row.totalMismatchObservations)
+  const variableSizeCounts = rows.map(row => row.variableSizeCount)
+  const maxVariances = rows.map(row => row.maxVariance)
+  console.log(
+    `  constant-all-sizes ${constantCount}/${rows.length} | ` +
+    `mismatch observations ${formatRange(Math.min(...mismatchObservations), Math.max(...mismatchObservations))} | ` +
+    `variable sizes ${formatRange(Math.min(...variableSizeCounts), Math.max(...variableSizeCounts))} | ` +
+    `max variance ${Number(Math.min(...maxVariances).toFixed(2))}..${Number(Math.max(...maxVariances).toFixed(2))}px`,
+  )
+
+  for (let index = 0; index < rows.length; index++) {
+    const row = rows[index]!
+    console.log(
+      `  ${row.preset} -> ${row.constantAcrossAllSizes ? 'constant' : 'variable'} | ` +
+      `mismatch ${row.totalMismatchObservations} | variable sizes ${row.variableSizeCount} | ` +
+      `max variance ${row.maxVariance.toFixed(2)}px`,
+    )
+  }
+}
+
 const browser = parseBrowser(parseStringFlag('browser'))
 const requestedPortRaw = parseStringFlag('port')
 const requestedPort = requestedPortRaw === null ? null : Number.parseInt(requestedPortRaw, 10)
@@ -184,6 +240,8 @@ try {
         process.exitCode = 1
       }
     }
+
+    printMatrixSummary(reports)
 
     if (output !== null) {
       writeFileSync(output, `${JSON.stringify(reports, null, 2)}\n`, 'utf8')

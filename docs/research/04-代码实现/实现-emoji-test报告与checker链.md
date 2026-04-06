@@ -71,6 +71,11 @@
 
 因此这次不是只加了一个 CLI，还把页面的 discoverability 和 site build 链路一起补上了。
 
+## 6. 页面和 checker 现在又补了更可读的结果层
+`emoji-test` 页面后续又新增了字号结果卡片，`emoji-check` 也新增了 preset 矩阵摘要，详见 [[实现-emoji结果卡片与checker矩阵摘要]]。
+
+这一步让这条链不只“能出 report”，而开始更适合人直接扫读一轮 preset/sweep 结果。
+
 ## 当前判断
 - 这条实现链很典型地展示了仓库的演进方式：
   - 先有研究性页面

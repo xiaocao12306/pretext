@@ -20,6 +20,7 @@
 - `pages/emoji-test.html` 仍保留人读输出
 - 同时支持 `?report=1&requestId=...`
 - 也支持 `sizes=...`、`threshold=...`
+- 现在还会把每个字号渲染成独立结果卡片，而不只是一整块 sweep 文本
 - 会回传 machine-readable summary：
   - `emojiCount`
   - `fontCount`
@@ -36,6 +37,7 @@
 - 可以像其他 checker 一样直接输出摘要
 - 支持 `--output=...` 落 JSON
 - 支持把 `--sizes=...`、`--threshold=...` 透传给页面
+- 多 preset 运行后还会输出一层矩阵摘要，先给出一轮 sweep 的整体健康度
 - 目前和 repo 里其他 demo/diagnostic checker 一样，先走 Chrome / Safari 两路
 
 ## 工程价值

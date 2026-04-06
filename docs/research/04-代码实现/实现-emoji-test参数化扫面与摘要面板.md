@@ -56,6 +56,11 @@
 - 让 JSON 输出能自描述
 - 让不同 sweep 结果之间可以直接比较，而不必猜测运行条件
 
+## 5. 页面随后又把 `sizeSummaries` 落成了可见结果卡片
+`emoji-test` 现在不只在 summary panel 里给出文本摘要，还把每个字号的结论渲染成独立卡片，详见 [[实现-emoji结果卡片与checker矩阵摘要]]。
+
+这一步让参数化 sweep 不再只有“总览 + 原始文本”两层，而开始拥有真正可扫读的字号级显示层。
+
 ## 当前判断
 - `emoji-test` 现在比之前更像一个真正的参数化实验页，而不是 repo 作者自己记得的一组默认样本
 - 它仍不是 accuracy/corpus 那种 standing snapshot，但已经具备“页面显式条件 + checker 透传 + 报告自描述”三件套
