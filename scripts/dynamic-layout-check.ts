@@ -92,6 +92,19 @@ type DynamicLayoutRun = {
   showDiagnostics?: boolean
 }
 
+type DynamicLayoutSummaryRow = {
+  preset: string
+  isNarrow: boolean
+  rightColumnUsed: boolean
+  totalLineCount: number
+  bodyComplete: boolean
+  creditSlotCount: number
+  leftBlockedBandCount: number
+  rightBlockedBandCount: number
+  leftAvgChosenSlotWidth: number | null
+  rightAvgChosenSlotWidth: number | null
+}
+
 function parseStringFlag(name: string): string | null {
   const prefix = `--${name}=`
   const arg = process.argv.find(value => value.startsWith(prefix))
@@ -241,11 +254,115 @@ function formatSlotWidth(value: number | null): string {
   return value === null ? 'none' : value.toFixed(1)
 }
 
+function formatRange(min: number, max: number): string {
+  return min === max ? String(min) : `${min}..${max}`
+}
+
+function formatWidthRange(min: number | null, max: number | null): string {
+  if (min === null || max === null) return 'none'
+  if (min === max) return `${min.toFixed(1)}px`
+  return `${min.toFixed(1)}..${max.toFixed(1)}px`
+}
+
 function validatePresetReport(report: DynamicLayoutReport, run: DynamicLayoutRun): boolean {
   if (run.presetKey === undefined || report.status === 'error') return report.status !== 'error'
   if (report.presetKey === run.presetKey) return true
   console.log(`protocol error: expected presetKey ${run.presetKey}, received ${report.presetKey ?? 'none'}`)
   return false
+}
+
+function toSummaryRow(entry: {
+  preset?: DynamicLayoutProbePreset['key']
+  scenario: Scenario
+  anglePair: AnglePair
+  report: DynamicLayoutReport
+}): DynamicLayoutSummaryRow | null {
+  const report = entry.report
+  if (report.status === 'error') return null
+  if (report.page === undefined || report.body === undefined || report.routing === undefined) return null
+  return {
+    preset: report.presetKey ?? `${entry.anglePair.openaiAngle}:${entry.anglePair.claudeAngle}`,
+    isNarrow: report.page.isNarrow,
+    rightColumnUsed: report.body.rightColumnUsed,
+    totalLineCount: report.body.totalLineCount,
+    bodyComplete: report.body.consumedAllText,
+    creditSlotCount: report.routing.creditSlotCount,
+    leftBlockedBandCount: report.routing.left.blockedBandCount,
+    rightBlockedBandCount: report.routing.right.blockedBandCount,
+    leftAvgChosenSlotWidth: report.routing.left.avgChosenSlotWidth,
+    rightAvgChosenSlotWidth: report.routing.right.avgChosenSlotWidth,
+  }
+}
+
+function printMatrixSummary(entries: Array<{
+  preset?: DynamicLayoutProbePreset['key']
+  scenario: Scenario
+  anglePair: AnglePair
+  report: DynamicLayoutReport
+}>): void {
+  const rows = entries
+    .map(toSummaryRow)
+    .filter((row): row is DynamicLayoutSummaryRow => row !== null)
+
+  console.log('matrix summary:')
+  console.log(`  runs ${entries.length} ready ${rows.length} error ${entries.length - rows.length}`)
+  if (rows.length === 0) return
+
+  const completeCount = rows.filter(row => row.bodyComplete).length
+  const narrowCount = rows.filter(row => row.isNarrow).length
+  const rightColumnUsedCount = rows.filter(row => row.rightColumnUsed).length
+  const totalLineCounts = rows.map(row => row.totalLineCount)
+  const creditSlotCounts = rows.map(row => row.creditSlotCount)
+  const blockedBandCounts = rows.map(row => row.leftBlockedBandCount + row.rightBlockedBandCount)
+  const leftSlotWidths = rows
+    .map(row => row.leftAvgChosenSlotWidth)
+    .filter((value): value is number => value !== null)
+  const rightSlotWidths = rows
+    .map(row => row.rightAvgChosenSlotWidth)
+    .filter((value): value is number => value !== null)
+
+  console.log(
+    `  complete ${completeCount}/${rows.length} | narrow ${narrowCount} | spread ${rows.length - narrowCount} | ` +
+    `right-column ${rightColumnUsedCount}/${rows.length} | body lines ${formatRange(Math.min(...totalLineCounts), Math.max(...totalLineCounts))}`,
+  )
+  console.log(
+    `  credit slots ${formatRange(Math.min(...creditSlotCounts), Math.max(...creditSlotCounts))} | ` +
+    `blocked bands ${formatRange(Math.min(...blockedBandCounts), Math.max(...blockedBandCounts))} | ` +
+    `left slot ${leftSlotWidths.length === 0 ? 'none' : formatWidthRange(Math.min(...leftSlotWidths), Math.max(...leftSlotWidths))} | ` +
+    `right slot ${rightSlotWidths.length === 0 ? 'none' : formatWidthRange(Math.min(...rightSlotWidths), Math.max(...rightSlotWidths))}`,
+  )
+
+  const rowsByPreset = new Map<string, DynamicLayoutSummaryRow[]>()
+  for (let index = 0; index < rows.length; index++) {
+    const row = rows[index]!
+    const group = rowsByPreset.get(row.preset)
+    if (group === undefined) {
+      rowsByPreset.set(row.preset, [row])
+      continue
+    }
+    group.push(row)
+  }
+
+  for (const [preset, presetRows] of rowsByPreset) {
+    const presetCompleteCount = presetRows.filter(row => row.bodyComplete).length
+    const presetRightColumnUsedCount = presetRows.filter(row => row.rightColumnUsed).length
+    const presetLineCounts = presetRows.map(row => row.totalLineCount)
+    const presetBlockedCounts = presetRows.map(row => row.leftBlockedBandCount + row.rightBlockedBandCount)
+    const presetLeftSlots = presetRows
+      .map(row => row.leftAvgChosenSlotWidth)
+      .filter((value): value is number => value !== null)
+    const presetRightSlots = presetRows
+      .map(row => row.rightAvgChosenSlotWidth)
+      .filter((value): value is number => value !== null)
+    console.log(
+      `  ${preset} -> runs ${presetRows.length} complete ${presetCompleteCount}/${presetRows.length} ` +
+      `right-column ${presetRightColumnUsedCount}/${presetRows.length} ` +
+      `lines ${formatRange(Math.min(...presetLineCounts), Math.max(...presetLineCounts))} ` +
+      `blocked ${formatRange(Math.min(...presetBlockedCounts), Math.max(...presetBlockedCounts))} ` +
+      `left ${presetLeftSlots.length === 0 ? 'none' : formatWidthRange(Math.min(...presetLeftSlots), Math.max(...presetLeftSlots))} ` +
+      `right ${presetRightSlots.length === 0 ? 'none' : formatWidthRange(Math.min(...presetRightSlots), Math.max(...presetRightSlots))}`,
+    )
+  }
 }
 
 const browser = parseBrowser(parseStringFlag('browser'))
@@ -296,6 +413,8 @@ try {
       process.exitCode = 1
     }
   }
+
+  printMatrixSummary(reports)
 
   if (output !== null) {
     writeFileSync(output, `${JSON.stringify(reports, null, 2)}\n`, 'utf8')

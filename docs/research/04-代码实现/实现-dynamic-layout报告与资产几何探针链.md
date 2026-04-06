@@ -132,6 +132,16 @@
 
 而不必依赖浏览器外部窗口管理能力。
 
+## 8. checker 现在也补上了矩阵级 digest
+`dynamic-layout-check` 现在会在逐条 run log 之后，再输出一层矩阵摘要，详见 [[实现-dynamic-layout-check矩阵摘要]]。
+
+这一层不再只强调“某条 run 成没成功”，而是开始直接回答：
+- 一轮矩阵里多少场景真正用到了右栏
+- 哪些组合开始让正文截断
+- credit slot / blocked band / 左右栏 slot 宽度整体落在什么区间
+
+因此这条资产探针现在不只会产出原始 report，也开始具备一眼看整体健康度的脚本视图。
+
 ## 当前判断
 - `dynamic-layout` 现在和 `emoji-test`、`justification-comparison` 一样，进入了“研究页到半正式探针”的过渡带
 - 这次更重要的进展在于：`pages/assets/*` 不再只通过视觉效果证明存在，而是第一次通过 report/checker 暴露出稳定的资产几何与流式正文信号
