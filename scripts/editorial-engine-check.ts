@@ -74,6 +74,16 @@ type EditorialEngineRun = {
   showDiagnostics?: boolean
 }
 
+type EditorialEngineSummaryRow = {
+  preset: string
+  isNarrow: boolean
+  bodyLineCount: number
+  bodyComplete: boolean
+  blockedBandCount: number
+  skippedBandCount: number
+  avgChosenSlotWidth: number | null
+}
+
 function parseStringFlag(name: string): string | null {
   const prefix = `--${name}=`
   const arg = process.argv.find(value => value.startsWith(prefix))
@@ -237,11 +247,97 @@ function formatWidth(value: number | null): string {
   return value === null ? 'none' : `${value.toFixed(1)}px`
 }
 
+function formatRange(min: number, max: number): string {
+  return min === max ? String(min) : `${min}..${max}`
+}
+
+function formatWidthRange(min: number | null, max: number | null): string {
+  if (min === null || max === null) return 'none'
+  if (min === max) return `${min.toFixed(1)}px`
+  return `${min.toFixed(1)}..${max.toFixed(1)}px`
+}
+
 function validatePresetReport(report: EditorialEngineReport, run: EditorialEngineRun): boolean {
   if (run.presetKey === undefined || report.status === 'error') return report.status !== 'error'
   if (report.presetKey === run.presetKey) return true
   console.log(`protocol error: expected presetKey ${run.presetKey}, received ${report.presetKey ?? 'none'}`)
   return false
+}
+
+function toSummaryRow(entry: {
+  preset: string
+  scenario: Scenario
+  report: EditorialEngineReport
+}): EditorialEngineSummaryRow | null {
+  const report = entry.report
+  if (report.status === 'error') return null
+  if (report.page === undefined || report.body === undefined || report.routing === undefined) return null
+  return {
+    preset: report.presetKey ?? report.orbs?.preset ?? entry.preset,
+    isNarrow: report.page.isNarrow,
+    bodyLineCount: report.body.lineCount,
+    bodyComplete: report.body.consumedAllText,
+    blockedBandCount: report.routing.blockedBandCount,
+    skippedBandCount: report.routing.skippedBandCount,
+    avgChosenSlotWidth: report.routing.avgChosenSlotWidth,
+  }
+}
+
+function printMatrixSummary(entries: Array<{ preset: string; scenario: Scenario; report: EditorialEngineReport }>): void {
+  const rows = entries
+    .map(toSummaryRow)
+    .filter((row): row is EditorialEngineSummaryRow => row !== null)
+
+  console.log('matrix summary:')
+  console.log(`  runs ${entries.length} ready ${rows.length} error ${entries.length - rows.length}`)
+  if (rows.length === 0) return
+
+  const completeCount = rows.filter(row => row.bodyComplete).length
+  const narrowCount = rows.filter(row => row.isNarrow).length
+  const bodyLineCounts = rows.map(row => row.bodyLineCount)
+  const blockedBandCounts = rows.map(row => row.blockedBandCount)
+  const skippedBandCounts = rows.map(row => row.skippedBandCount)
+  const slotWidths = rows
+    .map(row => row.avgChosenSlotWidth)
+    .filter((value): value is number => value !== null)
+
+  console.log(
+    `  complete ${completeCount}/${rows.length} | narrow ${narrowCount} | spread ${rows.length - narrowCount} | ` +
+    `body lines ${formatRange(Math.min(...bodyLineCounts), Math.max(...bodyLineCounts))}`,
+  )
+  console.log(
+    `  blocked bands ${formatRange(Math.min(...blockedBandCounts), Math.max(...blockedBandCounts))} | ` +
+    `skipped bands ${formatRange(Math.min(...skippedBandCounts), Math.max(...skippedBandCounts))} | ` +
+    `slot avg ${slotWidths.length === 0 ? 'none' : formatWidthRange(Math.min(...slotWidths), Math.max(...slotWidths))}`,
+  )
+
+  const rowsByPreset = new Map<string, EditorialEngineSummaryRow[]>()
+  for (let index = 0; index < rows.length; index++) {
+    const row = rows[index]!
+    const group = rowsByPreset.get(row.preset)
+    if (group === undefined) {
+      rowsByPreset.set(row.preset, [row])
+      continue
+    }
+    group.push(row)
+  }
+
+  for (const [preset, presetRows] of rowsByPreset) {
+    const presetCompleteCount = presetRows.filter(row => row.bodyComplete).length
+    const presetNarrowCount = presetRows.filter(row => row.isNarrow).length
+    const presetLineCounts = presetRows.map(row => row.bodyLineCount)
+    const presetBlockedCounts = presetRows.map(row => row.blockedBandCount)
+    const presetSlotWidths = presetRows
+      .map(row => row.avgChosenSlotWidth)
+      .filter((value): value is number => value !== null)
+    console.log(
+      `  ${preset} -> runs ${presetRows.length} complete ${presetCompleteCount}/${presetRows.length} ` +
+      `narrow ${presetNarrowCount} spread ${presetRows.length - presetNarrowCount} ` +
+      `lines ${formatRange(Math.min(...presetLineCounts), Math.max(...presetLineCounts))} ` +
+      `blocked ${formatRange(Math.min(...presetBlockedCounts), Math.max(...presetBlockedCounts))} ` +
+      `slot ${presetSlotWidths.length === 0 ? 'none' : formatWidthRange(Math.min(...presetSlotWidths), Math.max(...presetSlotWidths))}`,
+    )
+  }
 }
 
 const browser = parseBrowser(parseStringFlag('browser'))
@@ -286,6 +382,8 @@ try {
       process.exitCode = 1
     }
   }
+
+  printMatrixSummary(reports)
 
   if (output !== null) {
     writeFileSync(output, `${JSON.stringify(reports, null, 2)}\n`, 'utf8')

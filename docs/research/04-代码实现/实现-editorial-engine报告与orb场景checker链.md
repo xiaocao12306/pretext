@@ -102,6 +102,18 @@
 
 这说明它不再只是本地临时代码，而是正式进入仓库可重复的脚本入口面。
 
+## 8. checker 末尾现在又补上了矩阵级 digest
+`editorial-engine-check` 在逐条打印 run 之后，又新增了矩阵摘要层，详见 [[实现-editorial-engine-check矩阵摘要]]。
+
+这一步的意义是把脚本阅读方式从：
+- 一条条滚日志
+
+推进到：
+- 能先看整体 ready/error、complete/truncated、blocked/skipped、slot-width 区间
+- 再按 preset 看哪组场景整体更挤
+
+因此 Phase 4 现在不只是在“能把报告拉回来”，而是在“能更快读懂一轮矩阵结果”。
+
 ## 当前判断
 - `editorial-engine` 现在已经拥有和 `emoji-test`、`justification-comparison`、`dynamic-layout` 同类的 report/checker 链骨架
 - 这次最有价值的不是“又多了一条脚本”，而是把 interaction-driven demo 的首帧几何状态稳定化并可回收
