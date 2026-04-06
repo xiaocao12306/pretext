@@ -123,6 +123,7 @@ function printReport(report: JustificationReport): void {
   }
 
   console.log(
+    `preset ${report.presetKey ?? 'manual'} | ` +
     `${controls.colWidth}px | css ${formatColumn(columns.css)} | ` +
     `hyphen ${formatColumn(columns.hyphen)} | ` +
     `optimal ${formatColumn(columns.optimal)}`,
@@ -149,6 +150,13 @@ function formatSignedPercent(value: number): string {
 
 function formatSignedInt(value: number): string {
   return `${value >= 0 ? '+' : ''}${value}`
+}
+
+function validatePresetReport(report: JustificationReport, expectedPresetKey: JustificationProbePreset['key']): boolean {
+  if (report.status === 'error') return false
+  if (report.presetKey === expectedPresetKey) return true
+  console.log(`protocol error: expected presetKey ${expectedPresetKey}, received ${report.presetKey ?? 'none'}`)
+  return false
 }
 
 const browser = parseBrowser(parseStringFlag('browser'))
@@ -181,7 +189,7 @@ try {
       reports.push({ preset: preset.key, report })
       console.log(`[preset:${preset.key}]`)
       printReport(report)
-      if (report.status === 'error') {
+      if (report.status === 'error' || !validatePresetReport(report, preset.key)) {
         process.exitCode = 1
       }
     }

@@ -94,6 +94,7 @@ function printReport(report: EmojiReport): void {
   }
 
   console.log(
+    `preset ${report.presetKey ?? 'manual'} | ` +
     `emoji ${report.emojiCount ?? '?'} | fonts ${report.fontCount ?? '?'} | ` +
     `constant-all-sizes ${report.constantAcrossAllSizes ? 'yes' : 'no'} | ` +
     `threshold ${report.thresholdPx?.toFixed(2) ?? '?'} | ` +
@@ -121,6 +122,13 @@ function printReport(report: EmojiReport): void {
       (summary.worstEmoji === null ? '' : ` | worst ${summary.worstEmoji}`),
     )
   }
+}
+
+function validatePresetReport(report: EmojiReport, expectedPresetKey: EmojiProbePreset['key']): boolean {
+  if (report.status === 'error') return false
+  if (report.presetKey === expectedPresetKey) return true
+  console.log(`protocol error: expected presetKey ${expectedPresetKey}, received ${report.presetKey ?? 'none'}`)
+  return false
 }
 
 const browser = parseBrowser(parseStringFlag('browser'))
@@ -172,7 +180,7 @@ try {
       console.log(`[preset:${preset.key}]`)
       printReport(report)
       reports.push({ preset: preset.key, report })
-      if (report.status === 'error') {
+      if (report.status === 'error' || !validatePresetReport(report, preset.key)) {
         process.exitCode = 1
       }
     }

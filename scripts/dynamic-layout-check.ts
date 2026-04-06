@@ -221,7 +221,7 @@ function printReport(report: DynamicLayoutReport, run: DynamicLayoutRun): void {
   }
 
   console.log(
-    `${descriptor} -> ${page.width}x${page.height} | ${page.isNarrow ? 'narrow' : 'spread'} | ` +
+    `${descriptor} -> preset ${report.presetKey ?? 'manual'} | ${page.width}x${page.height} | ${page.isNarrow ? 'narrow' : 'spread'} | ` +
     `headline ${headline.lineCount} | body ${body.leftLineCount}+${body.rightLineCount}=${body.totalLineCount} | ` +
     `${body.consumedAllText ? 'complete' : `truncated@${body.remainingSegmentIndex}:${body.remainingGraphemeIndex}`}`,
   )
@@ -239,6 +239,13 @@ function printReport(report: DynamicLayoutReport, run: DynamicLayoutRun): void {
 
 function formatSlotWidth(value: number | null): string {
   return value === null ? 'none' : value.toFixed(1)
+}
+
+function validatePresetReport(report: DynamicLayoutReport, run: DynamicLayoutRun): boolean {
+  if (run.presetKey === undefined || report.status === 'error') return report.status !== 'error'
+  if (report.presetKey === run.presetKey) return true
+  console.log(`protocol error: expected presetKey ${run.presetKey}, received ${report.presetKey ?? 'none'}`)
+  return false
 }
 
 const browser = parseBrowser(parseStringFlag('browser'))
@@ -285,7 +292,7 @@ try {
     reports.push({ preset: run.presetKey, scenario: run.scenario, anglePair: run.anglePair, report })
     printReport(report, run)
 
-    if (report.status === 'error') {
+    if (report.status === 'error' || !validatePresetReport(report, run)) {
       process.exitCode = 1
     }
   }

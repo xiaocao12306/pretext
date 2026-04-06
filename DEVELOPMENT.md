@@ -40,6 +40,9 @@ Probe examples:
 - `bun run emoji-check --presets=tight,dense`
 - `bun run justification-check --presets=probe-364,wide-520`
 
+Preset contract note:
+- The preset-aware demo checkers now expect the page report to echo the requested `presetKey`. A mismatch is treated as a protocol failure, not a content regression.
+
 Packaging notes:
 - The published package entrypoint is built into `dist/` and generated at package time; `dist/` stays gitignored.
 - Keep library-internal imports using `.js` specifiers inside `.ts` source so plain `tsc -p tsconfig.build.json` emits correct runtime JS and declarations.

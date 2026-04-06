@@ -219,7 +219,7 @@ function printReport(report: EditorialEngineReport, run: EditorialEngineRun): vo
   }
 
   console.log(
-    `${descriptor} -> ${page.columnCount}col ${page.isNarrow ? 'narrow' : 'spread'} | ` +
+    `${descriptor} -> preset ${report.presetKey ?? 'manual'} | ${page.columnCount}col ${page.isNarrow ? 'narrow' : 'spread'} | ` +
     `headline ${headline.lineCount} | body ${body.lineCount} (${body.columnLineCounts.join('+') || '0'}) | ` +
     `pullquotes ${pullquotes.count}/${pullquotes.totalLineCount}`,
   )
@@ -235,6 +235,13 @@ function printReport(report: EditorialEngineReport, run: EditorialEngineRun): vo
 
 function formatWidth(value: number | null): string {
   return value === null ? 'none' : `${value.toFixed(1)}px`
+}
+
+function validatePresetReport(report: EditorialEngineReport, run: EditorialEngineRun): boolean {
+  if (run.presetKey === undefined || report.status === 'error') return report.status !== 'error'
+  if (report.presetKey === run.presetKey) return true
+  console.log(`protocol error: expected presetKey ${run.presetKey}, received ${report.presetKey ?? 'none'}`)
+  return false
 }
 
 const browser = parseBrowser(parseStringFlag('browser'))
@@ -275,7 +282,7 @@ try {
     reports.push({ preset: run.presetKey ?? run.orbPreset, scenario: run.scenario, report })
     printReport(report, run)
 
-    if (report.status === 'error') {
+    if (report.status === 'error' || !validatePresetReport(report, run)) {
       process.exitCode = 1
     }
   }
