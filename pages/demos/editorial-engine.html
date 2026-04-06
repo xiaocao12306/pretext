@@ -64,6 +64,17 @@
       backdrop-filter: blur(10px);
     }
     .telemetry[hidden] { display: none; }
+    .summary-panel {
+      position: fixed; left: 16px; bottom: 104px; z-index: 101;
+      min-width: 280px; max-width: min(420px, calc(100vw - 32px));
+      padding: 12px 14px; border-radius: 16px;
+      background: rgba(7, 8, 12, 0.72); border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 24px 50px rgba(0,0,0,0.28);
+      color: rgba(255,255,255,0.82);
+      font: 500 12px/1.45 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      white-space: pre-wrap; pointer-events: none;
+      backdrop-filter: blur(10px);
+    }
     .probe-rail {
       position: fixed; left: 16px; bottom: 16px; z-index: 101;
       display: flex; flex-wrap: wrap; gap: 8px;
@@ -114,6 +125,12 @@
         font-size: 11px; line-height: 1.4;
       }
 
+      .summary-panel {
+        left: 12px; bottom: 86px;
+        min-width: 0; max-width: calc(100vw - 24px);
+        font-size: 11px; line-height: 1.4;
+      }
+
       .probe-rail {
         left: 12px; bottom: 12px; max-width: calc(100vw - 24px);
         padding: 10px;
@@ -129,6 +146,7 @@
   <div id="stage"></div>
   <div id="hintPill" class="hint">Drag the orbs &middot; Click to pause &middot; Zero DOM reads</div>
   <pre id="telemetryPanel" class="telemetry" hidden></pre>
+  <pre id="summaryPanel" class="summary-panel" aria-live="polite"></pre>
   <nav id="probeRail" class="probe-rail" aria-label="Editorial engine probe presets"></nav>
   <a class="credit" href="https://x.com/somnai_dreams" target="_blank" rel="noreferrer">Made by @somnai_dreams</a>
 

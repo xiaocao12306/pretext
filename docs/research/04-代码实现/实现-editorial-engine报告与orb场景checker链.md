@@ -114,6 +114,16 @@
 
 因此 Phase 4 现在不只是在“能把报告拉回来”，而是在“能更快读懂一轮矩阵结果”。
 
+## 9. 页面侧随后也补上了常显 summary panel
+`editorial-engine` 页面现在也把这套 preset / body / routing / orb 摘要打到了页内常显面板上，详见 [[实现-editorial-engine页内摘要面板与preset诊断]]。
+
+这一步让 orb demo 不再只是：
+- page visuals
+- diagnostics telemetry
+- checker logs
+
+三层分裂入口，而开始拥有一个默认就可读的页面级诊断面。
+
 ## 当前判断
 - `editorial-engine` 现在已经拥有和 `emoji-test`、`justification-comparison`、`dynamic-layout` 同类的 report/checker 链骨架
 - 这次最有价值的不是“又多了一条脚本”，而是把 interaction-driven demo 的首帧几何状态稳定化并可回收

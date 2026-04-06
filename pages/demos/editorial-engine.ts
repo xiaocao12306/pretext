@@ -371,6 +371,8 @@ const hintNode = document.getElementById('hintPill')
 if (!(hintNode instanceof HTMLDivElement)) throw new Error('#hintPill not found')
 const telemetryNode = document.getElementById('telemetryPanel')
 if (!(telemetryNode instanceof HTMLPreElement)) throw new Error('#telemetryPanel not found')
+const summaryPanelNode = document.getElementById('summaryPanel')
+if (!(summaryPanelNode instanceof HTMLPreElement)) throw new Error('#summaryPanel not found')
 const probeRailNode = document.getElementById('probeRail')
 if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found')
 
@@ -456,6 +458,7 @@ const domCache = {
   stage, // cache lifetime: same as page
   hint: hintNode, // cache lifetime: same as page
   telemetry: telemetryNode, // cache lifetime: same as page
+  summary: summaryPanelNode, // cache lifetime: same as page
   probeRail: probeRailNode, // cache lifetime: same as page
   dropCap: dropCapEl, // cache lifetime: same as page
   bodyLines: linePool, // cache lifetime: on body line-count changes
@@ -1161,6 +1164,7 @@ function render(now: number): boolean {
     orbs,
   )
   syncHint(copyHintText(pageWidth, pageHeight, columnCount, activeOrbCount))
+  syncSummaryPanel(lastCommittedReport)
   syncTelemetry(lastCommittedReport)
   maybePublishReport(lastCommittedReport)
   return stillAnimating
@@ -1375,6 +1379,28 @@ function syncTelemetry(report: EditorialEngineReport | null): void {
 
   domCache.telemetry.hidden = false
   domCache.telemetry.textContent = formatTelemetry(report)
+}
+
+function syncSummaryPanel(report: EditorialEngineReport | null): void {
+  if (report === null) {
+    domCache.summary.textContent = ''
+    return
+  }
+  domCache.summary.textContent = formatSummary(report)
+}
+
+function formatSummary(report: EditorialEngineReport): string {
+  const body = report.body
+  const routing = report.routing
+  const columns = body.columnLineCounts.map((count, index) => `${index}:${count}`).join(' ')
+  return [
+    `preset ${report.presetKey ?? 'manual'}  ${report.page.width}x${report.page.height}  ${report.page.columnCount}col  ${report.page.isNarrow ? 'narrow' : 'spread'}`,
+    `body ${body.lineCount}  columns ${columns || 'none'}  ${body.consumedAllText ? 'complete' : `cursor ${body.remainingSegmentIndex}:${body.remainingGraphemeIndex}`}`,
+    `pullquotes ${report.pullquotes.count}/${report.pullquotes.totalLineCount}  drop-cap ${report.dropCap.width}x${report.dropCap.height}`,
+    `routing blocked ${routing.blockedBandCount}  skipped ${routing.skippedBandCount}  slot avg ${formatNullableWidth(routing.avgChosenSlotWidth)}`,
+    `orbs ${report.orbs.preset} ${report.orbs.activeCount} active ${report.orbs.pausedCount} paused ${report.orbs.animated ? 'live' : 'frozen'}`,
+    `bounds x ${report.orbs.bounds.minX.toFixed(1)}..${report.orbs.bounds.maxX.toFixed(1)}  y ${report.orbs.bounds.minY.toFixed(1)}..${report.orbs.bounds.maxY.toFixed(1)}`,
+  ].join('\n')
 }
 
 function formatTelemetry(report: EditorialEngineReport): string {
