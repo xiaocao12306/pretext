@@ -94,25 +94,64 @@
     text-transform: uppercase;
   }
   .actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .action {
+    display: block;
+    min-height: 72px;
+    padding: 12px;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--rule) 78%);
+    background: color-mix(in srgb, var(--panel) 88%, white 12%);
+    color: inherit;
+    text-decoration: none;
+    box-shadow: 0 10px 22px rgb(54 40 23 / 0.06);
+  }
+  .action:hover {
+    border-color: color-mix(in srgb, var(--accent) 46%, var(--rule) 54%);
+  }
+  .action-title {
+    display: block;
+    font: 700 12px/1.1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .action-meta {
+    display: block;
+    margin-top: 8px;
+    font: 12px/1.45 "SF Mono", ui-monospace, monospace;
+    color: var(--muted);
+  }
+  .asset-strip {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
     margin-top: 14px;
   }
-  .action {
+  .asset-chip {
     display: inline-flex;
     align-items: center;
-    min-height: 30px;
-    padding: 0 12px;
+    gap: 10px;
+    min-height: 40px;
+    padding: 8px 12px;
     border-radius: 999px;
-    border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--rule) 78%);
-    background: color-mix(in srgb, var(--panel) 88%, white 12%);
-    color: inherit;
-    text-decoration: none;
-    font: 600 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--rule) 80%);
+    background: color-mix(in srgb, var(--panel) 82%, white 18%);
+    box-shadow: 0 8px 20px rgb(54 40 23 / 0.05);
   }
-  .action:hover {
-    border-color: color-mix(in srgb, var(--accent) 46%, var(--rule) 54%);
+  .asset-chip img {
+    width: 18px;
+    height: 18px;
+    display: block;
+  }
+  .asset-chip span {
+    font: 600 11px/1 "SF Mono", ui-monospace, monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: color-mix(in srgb, var(--accent) 78%, black 22%);
   }
   @media (max-width: 760px) {
     .page {
@@ -153,6 +192,7 @@
           <span class="tag">asset wrap</span>
           <span class="tag">probe-ready</span>
         </div>
+        <div class="asset-strip" id="dynamicLayoutAssets" aria-label="Dynamic layout assets"></div>
         <div class="actions" id="dynamicLayoutActions"></div>
       </article>
 
