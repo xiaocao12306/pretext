@@ -30,6 +30,66 @@
       justify-content: center;
       margin: 0 0 18px;
     }
+    .preset-card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin: 0 auto 18px;
+      max-width: 980px;
+    }
+    .preset-card {
+      display: block;
+      padding: 12px 14px;
+      border: 1px solid #ddd4c8;
+      border-radius: 12px;
+      background: #f5f2ed;
+      color: #5f5447;
+      text-decoration: none;
+    }
+    .preset-card:hover {
+      border-color: #bcae9a;
+      background: #f1ece5;
+    }
+    .preset-card.is-active {
+      border-color: #9e876c;
+      background: #ece2d5;
+      color: #473b2d;
+    }
+    .preset-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 0 0 8px;
+    }
+    .preset-card-title {
+      font: 700 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #473b2d;
+    }
+    .preset-card-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(158, 135, 108, 0.14);
+      color: #6d563d;
+      font: 700 10px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .preset-card-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font: 400 12px/1.45 "SF Mono", ui-monospace, monospace;
+      color: #6a6055;
+    }
+    .preset-card-row + .preset-card-row {
+      margin-top: 2px;
+    }
     .probe-link {
       display: inline-flex; align-items: center; min-height: 30px;
       padding: 0 12px; border-radius: 999px;
@@ -223,6 +283,7 @@
     <p class="subtitle" style="text-align:center">Visualizes typography rivers, spacing variance, and how hyphenation and global line-breaking change justified text.</p>
 
     <nav id="probeRail" class="probe-rail" aria-label="Justification probe presets"></nav>
+    <section id="presetCardGrid" class="preset-card-grid" aria-label="Justification preset cards"></section>
     <pre id="summaryPanel" class="summary-panel" aria-live="polite"></pre>
     <section id="comparisonGrid" class="summary-grid" aria-label="Justification comparison cards"></section>
 

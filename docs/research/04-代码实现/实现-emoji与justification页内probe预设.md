@@ -68,6 +68,13 @@
 
 这次 `emoji-test` 和 `justification-comparison` 补上的，就是这层“场景选择器”。
 
+## 5. 页面随后又把 preset 选择器扩成了参数卡片
+两张页后续都在 rail 下方补上了 preset context cards，详见 [[实现-emoji与justification预设参数卡片]]。
+
+这一步让 preset 不再只是一组名字，而是开始直接携带：
+- `emoji-test` 的 `sizes/threshold`
+- `justification` 的 `width/showIndicators`
+
 ## 当前判断
 - `emoji-test`、`justification-comparison`、`dynamic-layout`、`editorial-engine` 现在都在向同一个方向收敛：query 可复现、页面内可切换、摘要可读、脚本可回收
 - 这类 probe 预设工作表面上像小 UI，但实际上是在把 Phase 3 demo 和 Phase 4 checker 共享的实验参数显式化

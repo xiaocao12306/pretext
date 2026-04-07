@@ -24,6 +24,64 @@
     gap: 8px;
     margin: 0 0 16px;
   }
+  .preset-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin: 0 0 16px;
+  }
+  .preset-card {
+    display: block;
+    padding: 12px 14px;
+    border: 1px solid #222;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(18, 18, 18, 0.98), rgba(12, 12, 12, 0.96));
+    color: #d5d5d5;
+    text-decoration: none;
+  }
+  .preset-card:hover { border-color: #3a3a3a; }
+  .preset-card.is-active {
+    border-color: #4fc3f7;
+    background: linear-gradient(180deg, rgba(17, 31, 38, 0.98), rgba(11, 18, 22, 0.96));
+    color: #c7edff;
+  }
+  .preset-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0 0 8px;
+  }
+  .preset-card-title {
+    font: 700 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .preset-card-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 20px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: rgba(79,195,247,0.14);
+    color: #9edfff;
+    font: 700 10px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .preset-card-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font: 12px/1.45 "SF Mono", monospace;
+    color: #9c9c9c;
+  }
+  .preset-card-row + .preset-card-row {
+    margin-top: 2px;
+  }
+  .preset-card.is-active .preset-card-row {
+    color: #b7d7e4;
+  }
   .probe-link {
     display: inline-flex;
     align-items: center;
@@ -104,6 +162,7 @@
 <h1>Emoji Width: Canvas vs DOM — Multi-Font Sweep</h1>
 <p class="sub">Tests whether emoji canvas/DOM diff is constant across fonts (font-independent) or varies per font.</p>
 <nav id="probeRail" class="probe-rail" aria-label="Emoji probe presets"></nav>
+<section id="presetCardGrid" class="preset-card-grid" aria-label="Emoji preset cards"></section>
 <div id="summaryPanel" class="panel" hidden></div>
 <section id="sizeSummaryGrid" class="summary-grid" hidden aria-label="Emoji size summary cards"></section>
 <div id="output">Running...</div>
@@ -162,6 +221,8 @@ const summaryNode = document.getElementById('summaryPanel');
 if (!(summaryNode instanceof HTMLDivElement)) throw new Error('#summaryPanel not found');
 const summaryGridNode = document.getElementById('sizeSummaryGrid');
 if (!(summaryGridNode instanceof HTMLElement)) throw new Error('#sizeSummaryGrid not found');
+const presetCardGridNode = document.getElementById('presetCardGrid');
+if (!(presetCardGridNode instanceof HTMLElement)) throw new Error('#presetCardGrid not found');
 const probeRailNode = document.getElementById('probeRail');
 if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found');
 
@@ -171,6 +232,7 @@ if (reportRequested) {
 }
 
 renderProbeRail();
+renderPresetCards();
 
 const ctx = createMeasureContext();
 
@@ -420,12 +482,65 @@ function renderProbeRail() {
   probeRailNode.replaceChildren(...presets.map(createProbeLink));
 }
 
+function renderPresetCards() {
+  const cards = EMOJI_PROBE_PRESETS.map(preset => createPresetCard({
+    label: preset.label,
+    href: buildProbeHref({ presetKey: preset.key }),
+    active: activePresetKey === preset.key || (arraysEqual(sizes, preset.sizes) && thresholdPx === preset.threshold),
+    sizeSummary: formatPresetSizes(preset.sizes),
+    thresholdSummary: `${preset.threshold.toFixed(2)}px`,
+  }));
+  presetCardGridNode.replaceChildren(...cards);
+}
+
 function createProbeLink(definition) {
   const element = document.createElement('a');
   element.className = definition.active ? 'probe-link is-active' : 'probe-link';
   element.href = definition.href;
   element.textContent = definition.label;
   return element;
+}
+
+function createPresetCard(definition) {
+  const element = document.createElement('a');
+  element.className = definition.active ? 'preset-card is-active' : 'preset-card';
+  element.href = definition.href;
+
+  const head = document.createElement('div');
+  head.className = 'preset-card-head';
+  const title = document.createElement('span');
+  title.className = 'preset-card-title';
+  title.textContent = definition.label;
+  head.append(title);
+  if (definition.active) {
+    const badge = document.createElement('span');
+    badge.className = 'preset-card-badge';
+    badge.textContent = 'active';
+    head.append(badge);
+  }
+
+  element.append(
+    head,
+    createPresetCardRow('sizes', definition.sizeSummary),
+    createPresetCardRow('threshold', definition.thresholdSummary),
+  );
+  return element;
+}
+
+function createPresetCardRow(label, value) {
+  const row = document.createElement('div');
+  row.className = 'preset-card-row';
+  const left = document.createElement('span');
+  left.textContent = label;
+  const right = document.createElement('span');
+  right.textContent = value;
+  row.append(left, right);
+  return row;
+}
+
+function formatPresetSizes(values) {
+  if (values.length === 0) return 'none';
+  return `${values[0]}..${values[values.length - 1]} (${values.length})`;
 }
 
 function buildProbeHref(options) {

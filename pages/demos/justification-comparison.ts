@@ -81,6 +81,8 @@ type State = {
 const dom = createDomCache()
 const probeRailNode = document.getElementById('probeRail')
 if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found')
+const presetCardGridNode = document.getElementById('presetCardGrid')
+if (!(presetCardGridNode instanceof HTMLElement)) throw new Error('#presetCardGrid not found')
 const summaryPanelNode = document.getElementById('summaryPanel')
 if (!(summaryPanelNode instanceof HTMLElement)) throw new Error('#summaryPanel not found')
 const comparisonGridNode = document.getElementById('comparisonGrid')
@@ -172,6 +174,7 @@ function render(): void {
 
   renderFrame(dom, frame, resources.normalSpaceWidth)
   renderProbeRail(frame.controls)
+  renderPresetCards(frame.controls)
   scheduleCssOverlaySync()
 }
 
@@ -433,12 +436,70 @@ function renderProbeRail(controls: DemoControls): void {
   probeRailNode.replaceChildren(...presets.map(createProbeLink))
 }
 
+function renderPresetCards(controls: DemoControls): void {
+  const cards = JUSTIFICATION_PROBE_PRESETS.map(preset =>
+    createPresetCard({
+      label: preset.label,
+      href: buildProbeHref({ presetKey: preset.key }),
+      active:
+        activePresetKey === preset.key ||
+        (controls.colWidth === preset.width && controls.showIndicators === preset.showIndicators),
+      widthSummary: `${preset.width}px`,
+      indicatorSummary: preset.showIndicators ? 'visualizers on' : 'visualizers off',
+    }),
+  )
+  presetCardGridNode.replaceChildren(...cards)
+}
+
 function createProbeLink(definition: { label: string; href: string; active: boolean }): HTMLAnchorElement {
   const element = document.createElement('a')
   element.className = definition.active ? 'probe-link is-active' : 'probe-link'
   element.href = definition.href
   element.textContent = definition.label
   return element
+}
+
+function createPresetCard(definition: {
+  label: string
+  href: string
+  active: boolean
+  widthSummary: string
+  indicatorSummary: string
+}): HTMLAnchorElement {
+  const element = document.createElement('a')
+  element.className = definition.active ? 'preset-card is-active' : 'preset-card'
+  element.href = definition.href
+
+  const head = document.createElement('div')
+  head.className = 'preset-card-head'
+  const title = document.createElement('span')
+  title.className = 'preset-card-title'
+  title.textContent = definition.label
+  head.append(title)
+  if (definition.active) {
+    const badge = document.createElement('span')
+    badge.className = 'preset-card-badge'
+    badge.textContent = 'active'
+    head.append(badge)
+  }
+
+  element.append(
+    head,
+    createPresetCardRow('width', definition.widthSummary),
+    createPresetCardRow('indicator', definition.indicatorSummary),
+  )
+  return element
+}
+
+function createPresetCardRow(label: string, value: string): HTMLElement {
+  const row = document.createElement('div')
+  row.className = 'preset-card-row'
+  const left = document.createElement('span')
+  left.textContent = label
+  const right = document.createElement('span')
+  right.textContent = value
+  row.append(left, right)
+  return row
 }
 
 function buildProbeHref(options: { presetKey?: string; width?: number; showIndicators?: boolean }): string {
