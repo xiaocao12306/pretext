@@ -39,6 +39,17 @@ type EmojiSizeSummary = {
   worstEmoji: string | null
 }
 
+type EmojiFontSummary = {
+  fontFamily: string
+  mismatchSizeCount: number
+  mismatchSizes: number[]
+  totalMismatches: number
+  maxAbsDiff: number
+  worstEmoji: string | null
+  worstSize: number | null
+  correctionDiffs: number[]
+}
+
 type EmojiReport = {
   status: 'ready' | 'error'
   requestId?: string
@@ -50,6 +61,7 @@ type EmojiReport = {
   sizes?: number[]
   totalMismatchObservations?: number
   sizeSummaries?: EmojiSizeSummary[]
+  fontSummaries?: EmojiFontSummary[]
   constantAcrossAllSizes?: boolean
   fontIndependentSizes?: number[]
   variableSizes?: number[]
@@ -62,6 +74,8 @@ type EmojiSummaryRow = {
   totalMismatchObservations: number
   variableSizeCount: number
   maxVariance: number
+  noisyFontCount: number
+  hottestFont: string | null
 }
 
 function parseStringFlag(name: string): string | null {
@@ -130,6 +144,18 @@ function printReport(report: EmojiReport): void {
       (summary.worstEmoji === null ? '' : ` | worst ${summary.worstEmoji}`),
     )
   }
+
+  for (const summary of report.fontSummaries ?? []) {
+    const diffs = summary.correctionDiffs.length === 0
+      ? 'none'
+      : summary.correctionDiffs.map(diff => `${diff > 0 ? '+' : ''}${diff.toFixed(2)}`).join(', ')
+    console.log(
+      `font ${compactFontLabel(summary.fontFamily)} | sizes ${summary.mismatchSizes.join(',') || 'none'} | ` +
+      `mismatch ${summary.totalMismatches} | max ${summary.maxAbsDiff.toFixed(2)}px | ` +
+      `correction ${diffs}` +
+      (summary.worstEmoji === null || summary.worstSize === null ? '' : ` | worst ${summary.worstEmoji}@${summary.worstSize}px`),
+    )
+  }
 }
 
 function validatePresetReport(report: EmojiReport, expectedPresetKey: EmojiProbePreset['key']): boolean {
@@ -147,13 +173,21 @@ function toSummaryRow(entry: { preset: EmojiProbePreset['key']; report: EmojiRep
   const report = entry.report
   if (report.status === 'error') return null
   const sizeSummaries = report.sizeSummaries ?? []
+  const fontSummaries = report.fontSummaries ?? []
   const variances = sizeSummaries.map(summary => summary.maxVariance)
+  const noisyFonts = fontSummaries.filter(summary => summary.totalMismatches > 0)
+  const hottestFont = noisyFonts.reduce<EmojiFontSummary | null>((best, current) => {
+    if (best === null) return current
+    return current.totalMismatches > best.totalMismatches ? current : best
+  }, null)
   return {
     preset: report.presetKey ?? entry.preset,
     constantAcrossAllSizes: report.constantAcrossAllSizes ?? false,
     totalMismatchObservations: report.totalMismatchObservations ?? 0,
     variableSizeCount: (report.variableSizes ?? []).length,
     maxVariance: variances.length === 0 ? 0 : Math.max(...variances),
+    noisyFontCount: noisyFonts.length,
+    hottestFont: hottestFont === null ? null : compactFontLabel(hottestFont.fontFamily),
   }
 }
 
@@ -170,11 +204,13 @@ function printMatrixSummary(entries: Array<{ preset: EmojiProbePreset['key']; re
   const mismatchObservations = rows.map(row => row.totalMismatchObservations)
   const variableSizeCounts = rows.map(row => row.variableSizeCount)
   const maxVariances = rows.map(row => row.maxVariance)
+  const noisyFontCounts = rows.map(row => row.noisyFontCount)
   console.log(
     `  constant-all-sizes ${constantCount}/${rows.length} | ` +
     `mismatch observations ${formatRange(Math.min(...mismatchObservations), Math.max(...mismatchObservations))} | ` +
     `variable sizes ${formatRange(Math.min(...variableSizeCounts), Math.max(...variableSizeCounts))} | ` +
-    `max variance ${Number(Math.min(...maxVariances).toFixed(2))}..${Number(Math.max(...maxVariances).toFixed(2))}px`,
+    `max variance ${Number(Math.min(...maxVariances).toFixed(2))}..${Number(Math.max(...maxVariances).toFixed(2))}px | ` +
+    `noisy fonts ${formatRange(Math.min(...noisyFontCounts), Math.max(...noisyFontCounts))}`,
   )
 
   for (let index = 0; index < rows.length; index++) {
@@ -182,9 +218,15 @@ function printMatrixSummary(entries: Array<{ preset: EmojiProbePreset['key']; re
     console.log(
       `  ${row.preset} -> ${row.constantAcrossAllSizes ? 'constant' : 'variable'} | ` +
       `mismatch ${row.totalMismatchObservations} | variable sizes ${row.variableSizeCount} | ` +
-      `max variance ${row.maxVariance.toFixed(2)}px`,
+      `max variance ${row.maxVariance.toFixed(2)}px | noisy fonts ${row.noisyFontCount}` +
+      (row.hottestFont === null ? '' : ` | hot ${row.hottestFont}`),
     )
   }
+}
+
+function compactFontLabel(fontFamily: string): string {
+  const normalized = fontFamily.replaceAll('"', '')
+  return normalized.split(',')[0] ?? normalized
 }
 
 const browser = parseBrowser(parseStringFlag('browser'))

@@ -102,6 +102,39 @@
     color: #c7edff;
   }
   .panel[hidden] { display: none; }
+  .route-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin: 0 0 16px;
+  }
+  .route-card {
+    display: block;
+    padding: 12px 14px;
+    border: 1px solid #222;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(18, 18, 18, 0.98), rgba(12, 12, 12, 0.96));
+    color: #d5d5d5;
+    text-decoration: none;
+  }
+  .route-card:hover { border-color: #3a3a3a; }
+  .route-card-title {
+    margin: 0 0 8px;
+    font: 700 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  .route-card-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font: 12px/1.45 "SF Mono", monospace;
+    color: #9c9c9c;
+  }
+  .route-card-row + .route-card-row {
+    margin-top: 2px;
+  }
   .summary-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -221,6 +254,7 @@
 <p class="sub">Tests whether emoji canvas/DOM diff is constant across fonts (font-independent) or varies per font.</p>
 <nav id="probeRail" class="probe-rail" aria-label="Emoji probe presets"></nav>
 <section id="presetCardGrid" class="preset-card-grid" aria-label="Emoji preset cards"></section>
+<section id="routeCardGrid" class="route-card-grid" aria-label="Emoji scenario links"></section>
 <div id="summaryPanel" class="panel" hidden></div>
 <section id="sizeSummaryGrid" class="summary-grid" hidden aria-label="Emoji size summary cards"></section>
 <section id="fontSummaryGrid" class="font-summary-grid" hidden aria-label="Emoji font summary cards"></section>
@@ -276,6 +310,8 @@ const outputNode = document.getElementById('output');
 if (!(outputNode instanceof HTMLDivElement)) throw new Error('#output not found');
 const summaryNode = document.getElementById('summaryPanel');
 if (!(summaryNode instanceof HTMLDivElement)) throw new Error('#summaryPanel not found');
+const routeCardGridNode = document.getElementById('routeCardGrid');
+if (!(routeCardGridNode instanceof HTMLElement)) throw new Error('#routeCardGrid not found');
 const summaryGridNode = document.getElementById('sizeSummaryGrid');
 if (!(summaryGridNode instanceof HTMLElement)) throw new Error('#sizeSummaryGrid not found');
 const fontSummaryGridNode = document.getElementById('fontSummaryGrid');
@@ -292,6 +328,7 @@ if (reportRequested) {
 
 renderProbeRail();
 renderPresetCards();
+renderScenarioCards();
 
 const ctx = createMeasureContext();
 
@@ -555,6 +592,11 @@ function renderPresetCards() {
   presetCardGridNode.replaceChildren(...cards);
 }
 
+function renderScenarioCards() {
+  const cards = buildScenarioCardDefinitions().map(createScenarioCard);
+  routeCardGridNode.replaceChildren(...cards);
+}
+
 function createProbeLink(definition) {
   const element = document.createElement('a');
   element.className = definition.active ? 'probe-link is-active' : 'probe-link';
@@ -614,6 +656,65 @@ function findMatchingPresetKey() {
   return matched?.key;
 }
 
+function buildScenarioCardDefinitions() {
+  const matchedPresetKey = findMatchingPresetKey();
+  const query = buildScenarioQuery(matchedPresetKey);
+  const rootPath = normalizeEmojiPath(location.pathname, 'root');
+  const demoPath = normalizeEmojiPath(location.pathname, 'demo');
+  return [
+    {
+      label: 'Root path',
+      href: `${rootPath}${query}`,
+      mode: matchedPresetKey ?? 'manual',
+      route: 'direct',
+      path: rootPath,
+    },
+    {
+      label: 'Demo alias',
+      href: `${demoPath}${query}`,
+      mode: matchedPresetKey ?? 'manual',
+      route: 'redirect',
+      path: demoPath,
+    },
+    {
+      label: 'Report run',
+      href: `${demoPath}${appendReportQuery(query)}`,
+      mode: matchedPresetKey ?? 'manual',
+      route: 'checker',
+      path: `${demoPath}?report=1`,
+    },
+  ];
+}
+
+function buildScenarioQuery(matchedPresetKey) {
+  const next = new URLSearchParams();
+  if (matchedPresetKey !== undefined) {
+    next.set('preset', matchedPresetKey);
+  } else {
+    next.set('sizes', sizes.join(','));
+    next.set('threshold', String(thresholdPx));
+  }
+  const query = next.toString();
+  return query.length === 0 ? '' : `?${query}`;
+}
+
+function appendReportQuery(query) {
+  const next = new URLSearchParams(query.startsWith('?') ? query.slice(1) : query);
+  next.set('report', '1');
+  return `?${next.toString()}`;
+}
+
+function normalizeEmojiPath(pathname, target) {
+  if (target === 'demo') {
+    return pathname.includes('/demos/')
+      ? pathname.replace(/\/emoji-test\/?$/, '/emoji-test')
+      : pathname.replace(/\/emoji-test\/?$/, '/demos/emoji-test');
+  }
+  return pathname.includes('/demos/')
+    ? pathname.replace(/\/demos\/emoji-test\/?$/, '/emoji-test')
+    : pathname.replace(/\/emoji-test\/?$/, '/emoji-test');
+}
+
 function buildFontSummaries() {
   fontSummaries.length = 0;
 
@@ -670,6 +771,35 @@ function buildProbeHref(options) {
   }
   const query = next.toString();
   return query.length === 0 ? location.pathname : `${location.pathname}?${query}`;
+}
+
+function createScenarioCard(definition) {
+  const element = document.createElement('a');
+  element.className = 'route-card';
+  element.href = definition.href;
+
+  const title = document.createElement('div');
+  title.className = 'route-card-title';
+  title.textContent = definition.label;
+
+  element.append(
+    title,
+    createRouteCardRow('mode', definition.mode),
+    createRouteCardRow('route', definition.route),
+    createRouteCardRow('path', definition.path),
+  );
+  return element;
+}
+
+function createRouteCardRow(label, value) {
+  const row = document.createElement('div');
+  row.className = 'route-card-row';
+  const left = document.createElement('span');
+  left.textContent = label;
+  const right = document.createElement('span');
+  right.textContent = value;
+  row.append(left, right);
+  return row;
 }
 
 function arraysEqual(left, right) {
