@@ -88,6 +88,8 @@ const probeRailNode = document.getElementById('probeRail')
 if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found')
 const presetCardGridNode = document.getElementById('presetCardGrid')
 if (!(presetCardGridNode instanceof HTMLElement)) throw new Error('#presetCardGrid not found')
+const routeCardGridNode = document.getElementById('routeCardGrid')
+if (!(routeCardGridNode instanceof HTMLElement)) throw new Error('#routeCardGrid not found')
 const summaryPanelNode = document.getElementById('summaryPanel')
 if (!(summaryPanelNode instanceof HTMLElement)) throw new Error('#summaryPanel not found')
 const comparisonGridNode = document.getElementById('comparisonGrid')
@@ -178,6 +180,7 @@ function render(): void {
   renderFrame(dom, frame, resources.normalSpaceWidth)
   renderProbeRail(frame.controls)
   renderPresetCards(frame.controls)
+  renderScenarioCards(frame.controls)
   scheduleCssOverlaySync()
 }
 
@@ -453,6 +456,11 @@ function renderPresetCards(controls: DemoControls): void {
   presetCardGridNode.replaceChildren(...cards)
 }
 
+function renderScenarioCards(controls: DemoControls): void {
+  const cards = buildScenarioCardDefinitions(controls).map(createScenarioCard)
+  routeCardGridNode.replaceChildren(...cards)
+}
+
 function toJustificationProbeState(controls: DemoControls): JustificationProbeState {
   return {
     colWidth: controls.colWidth,
@@ -470,6 +478,109 @@ function isJustificationPresetActive(
   state: JustificationProbeState,
 ): boolean {
   return state.colWidth === preset.width && state.showIndicators === preset.showIndicators
+}
+
+function buildScenarioCardDefinitions(controls: DemoControls): Array<{
+  label: string
+  href: string
+  mode: string
+  route: string
+  path: string
+}> {
+  const matchedPreset = findMatchingJustificationPreset(controls)
+  const query = buildScenarioQuery(controls, matchedPreset)
+  const demoPath = normalizeJustificationPath(location.pathname, 'demo')
+  const rootPath = normalizeJustificationPath(location.pathname, 'root')
+  return [
+    {
+      label: 'Demo path',
+      href: `${demoPath}${query}`,
+      mode: matchedPreset?.key ?? 'manual',
+      route: 'interactive',
+      path: demoPath,
+    },
+    {
+      label: 'Root alias',
+      href: `${rootPath}${query}`,
+      mode: matchedPreset?.key ?? 'manual',
+      route: 'redirect',
+      path: rootPath,
+    },
+    {
+      label: 'Report run',
+      href: `${demoPath}${appendReportQuery(query)}`,
+      mode: matchedPreset?.key ?? 'manual',
+      route: 'checker',
+      path: `${demoPath}?report=1`,
+    },
+  ]
+}
+
+function buildScenarioQuery(
+  controls: DemoControls,
+  matchedPreset: JustificationProbePreset | null,
+): string {
+  const next = new URLSearchParams()
+  if (matchedPreset !== null) {
+    next.set('preset', matchedPreset.key)
+  } else {
+    next.set('width', String(controls.colWidth))
+    next.set('showIndicators', controls.showIndicators ? '1' : '0')
+  }
+  const query = next.toString()
+  return query.length === 0 ? '' : `?${query}`
+}
+
+function appendReportQuery(query: string): string {
+  const next = new URLSearchParams(query.startsWith('?') ? query.slice(1) : query)
+  next.set('report', '1')
+  return `?${next.toString()}`
+}
+
+function normalizeJustificationPath(pathname: string, target: 'demo' | 'root'): string {
+  if (target === 'demo') {
+    return pathname.includes('/demos/')
+      ? pathname.replace(/\/justification-comparison\/?$/, '/justification-comparison')
+      : pathname.replace(/\/justification-comparison\/?$/, '/demos/justification-comparison')
+  }
+  return pathname.includes('/demos/')
+    ? pathname.replace(/\/demos\/justification-comparison\/?$/, '/justification-comparison')
+    : pathname.replace(/\/justification-comparison\/?$/, '/justification-comparison')
+}
+
+function createScenarioCard(definition: {
+  label: string
+  href: string
+  mode: string
+  route: string
+  path: string
+}): HTMLAnchorElement {
+  const element = document.createElement('a')
+  element.className = 'route-card'
+  element.href = definition.href
+
+  const title = document.createElement('div')
+  title.className = 'route-card-title'
+  title.textContent = definition.label
+
+  element.append(
+    title,
+    createRouteCardRow('mode', definition.mode),
+    createRouteCardRow('route', definition.route),
+    createRouteCardRow('path', definition.path),
+  )
+  return element
+}
+
+function createRouteCardRow(label: string, value: string): HTMLElement {
+  const row = document.createElement('div')
+  row.className = 'route-card-row'
+  const left = document.createElement('span')
+  left.textContent = label
+  const right = document.createElement('span')
+  right.textContent = value
+  row.append(left, right)
+  return row
 }
 
 function createProbeLink(definition: { label: string; href: string; active: boolean }): HTMLAnchorElement {
