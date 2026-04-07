@@ -1,5 +1,5 @@
 import { clearNavigationReport, publishNavigationPhase, publishNavigationReport } from '../report-utils.ts'
-import { JUSTIFICATION_PROBE_PRESETS, findJustificationProbePreset } from '../probe-presets.ts'
+import { JUSTIFICATION_PROBE_PRESETS, findJustificationProbePreset, type JustificationProbePreset } from '../probe-presets.ts'
 import {
   createDemoResources,
   buildDemoFrame,
@@ -78,6 +78,11 @@ type State = {
   }
 }
 
+type JustificationProbeState = {
+  colWidth: number
+  showIndicators: boolean
+}
+
 const dom = createDomCache()
 const probeRailNode = document.getElementById('probeRail')
 if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found')
@@ -89,8 +94,6 @@ const comparisonGridNode = document.getElementById('comparisonGrid')
 if (!(comparisonGridNode instanceof HTMLElement)) throw new Error('#comparisonGrid not found')
 const params = new URLSearchParams(location.search)
 const requestedPreset = findPresetParam(params.get('preset'))
-const presetOverridesActive = params.has('width') || params.has('showIndicators')
-const activePresetKey = requestedPreset !== null && !presetOverridesActive ? requestedPreset.key : null
 const requestId = params.get('requestId') ?? undefined
 const reportRequested = params.get('report') === '1'
 const requestedWidth = parseWidthParam(
@@ -222,9 +225,10 @@ function buildReport(
   cssOverlaySummary: CssOverlaySummary,
   cssColumnHeight: number,
 ): JustificationReport {
+  const matchedPreset = findMatchingJustificationPreset(frame.controls)
   return {
     status: 'ready',
-    presetKey: activePresetKey ?? undefined,
+    presetKey: matchedPreset?.key,
     environment: getEnvironmentFingerprint(),
     controls: frame.controls,
     normalSpaceWidth: Number(normalSpaceWidth.toFixed(3)),
@@ -426,29 +430,46 @@ function parseBooleanParam(raw: string | null, fallback: boolean): boolean {
 }
 
 function renderProbeRail(controls: DemoControls): void {
+  const probeState = toJustificationProbeState(controls)
   const presets = JUSTIFICATION_PROBE_PRESETS.map(preset => ({
     label: preset.label,
     href: buildProbeHref({ presetKey: preset.key }),
-    active:
-      activePresetKey === preset.key ||
-      (controls.colWidth === preset.width && controls.showIndicators === preset.showIndicators),
+    active: isJustificationPresetActive(preset, probeState),
   }))
   probeRailNode.replaceChildren(...presets.map(createProbeLink))
 }
 
 function renderPresetCards(controls: DemoControls): void {
+  const probeState = toJustificationProbeState(controls)
   const cards = JUSTIFICATION_PROBE_PRESETS.map(preset =>
     createPresetCard({
       label: preset.label,
       href: buildProbeHref({ presetKey: preset.key }),
-      active:
-        activePresetKey === preset.key ||
-        (controls.colWidth === preset.width && controls.showIndicators === preset.showIndicators),
+      active: isJustificationPresetActive(preset, probeState),
       widthSummary: `${preset.width}px`,
       indicatorSummary: preset.showIndicators ? 'visualizers on' : 'visualizers off',
     }),
   )
   presetCardGridNode.replaceChildren(...cards)
+}
+
+function toJustificationProbeState(controls: DemoControls): JustificationProbeState {
+  return {
+    colWidth: controls.colWidth,
+    showIndicators: controls.showIndicators,
+  }
+}
+
+function findMatchingJustificationPreset(controls: DemoControls): JustificationProbePreset | null {
+  const state = toJustificationProbeState(controls)
+  return JUSTIFICATION_PROBE_PRESETS.find(preset => isJustificationPresetActive(preset, state)) ?? null
+}
+
+function isJustificationPresetActive(
+  preset: JustificationProbePreset,
+  state: JustificationProbeState,
+): boolean {
+  return state.colWidth === preset.width && state.showIndicators === preset.showIndicators
 }
 
 function createProbeLink(definition: { label: string; href: string; active: boolean }): HTMLAnchorElement {

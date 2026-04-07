@@ -109,6 +109,13 @@
     margin: 0 0 16px;
   }
   .summary-grid[hidden] { display: none; }
+  .font-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin: 0 0 16px;
+  }
+  .font-summary-grid[hidden] { display: none; }
   .summary-card {
     padding: 12px 14px;
     border: 1px solid #222;
@@ -150,6 +157,57 @@
     color: #9ecfff;
     margin-top: 6px;
   }
+  .font-card {
+    padding: 12px 14px;
+    border: 1px solid #222;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(18, 18, 18, 0.98), rgba(12, 12, 12, 0.96));
+    font: 12px/1.45 "SF Mono", monospace;
+    color: #d5d5d5;
+  }
+  .font-card.is-clean { border-color: rgba(129, 199, 132, 0.32); }
+  .font-card.is-noisy { border-color: rgba(79,195,247,0.32); }
+  .font-card.is-hot { border-color: rgba(239, 83, 80, 0.32); }
+  .font-card-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0 0 8px;
+    color: #fff;
+    font-weight: 700;
+  }
+  .font-card-badge {
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 1;
+  }
+  .font-card-badge.is-clean {
+    background: rgba(129, 199, 132, 0.14);
+    color: #a5d6a7;
+  }
+  .font-card-badge.is-noisy {
+    background: rgba(79,195,247,0.14);
+    color: #9edfff;
+  }
+  .font-card-badge.is-hot {
+    background: rgba(239, 83, 80, 0.14);
+    color: #ef9a9a;
+  }
+  .font-card-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    color: #9c9c9c;
+  }
+  .font-card-row + .font-card-row {
+    margin-top: 2px;
+  }
+  .font-card-worst {
+    margin-top: 6px;
+    color: #9ecfff;
+  }
   #output { font: 13px "SF Mono", monospace; white-space: pre-wrap; background: #111; border: 1px solid #222; border-radius: 8px; padding: 16px; }
   .match { color: #81c784; }
   .mismatch { color: #ef5350; }
@@ -165,6 +223,7 @@
 <section id="presetCardGrid" class="preset-card-grid" aria-label="Emoji preset cards"></section>
 <div id="summaryPanel" class="panel" hidden></div>
 <section id="sizeSummaryGrid" class="summary-grid" hidden aria-label="Emoji size summary cards"></section>
+<section id="fontSummaryGrid" class="font-summary-grid" hidden aria-label="Emoji font summary cards"></section>
 <div id="output">Running...</div>
 <script type="module">
 import { clearNavigationReport, publishNavigationPhase, publishNavigationReport } from './report-utils.ts'
@@ -209,8 +268,6 @@ const defaultSizes = defaultPreset.sizes;
 
 const params = new URLSearchParams(location.search);
 const requestedPreset = findPresetParam(params.get('preset'));
-const presetOverridesActive = params.has('sizes') || params.has('threshold');
-const activePresetKey = requestedPreset !== null && !presetOverridesActive ? requestedPreset.key : null;
 const requestId = params.get('requestId') ?? undefined;
 const reportRequested = params.get('report') === '1';
 const thresholdPx = parseThresholdParam(params.get('threshold'), requestedPreset?.threshold ?? defaultPreset.threshold);
@@ -221,6 +278,8 @@ const summaryNode = document.getElementById('summaryPanel');
 if (!(summaryNode instanceof HTMLDivElement)) throw new Error('#summaryPanel not found');
 const summaryGridNode = document.getElementById('sizeSummaryGrid');
 if (!(summaryGridNode instanceof HTMLElement)) throw new Error('#sizeSummaryGrid not found');
+const fontSummaryGridNode = document.getElementById('fontSummaryGrid');
+if (!(fontSummaryGridNode instanceof HTMLElement)) throw new Error('#fontSummaryGrid not found');
 const presetCardGridNode = document.getElementById('presetCardGrid');
 if (!(presetCardGridNode instanceof HTMLElement)) throw new Error('#presetCardGrid not found');
 const probeRailNode = document.getElementById('probeRail');
@@ -244,6 +303,7 @@ document.body.appendChild(container);
 // Also track per-font to see if there's variance
 const diffsBySizeFont = new Map(); // size → Map<font, diff[]>
 const sizeSummaries = [];
+const fontSummaries = [];
 let totalMismatchObservations = 0;
 
 let out = '';
@@ -412,7 +472,7 @@ if (sz16) {
 
 const report = withRequestId({
   status: 'ready',
-  presetKey: activePresetKey ?? undefined,
+  presetKey: findMatchingPresetKey(),
   environment: getEnvironmentFingerprint(),
   emojiCount: emoji.length,
   fontCount: fonts.length,
@@ -420,6 +480,7 @@ const report = withRequestId({
   sizes,
   totalMismatchObservations,
   sizeSummaries,
+  fontSummaries: buildFontSummaries(),
   constantAcrossAllSizes: sizeSummaries.every(summary => summary.constantAcrossFonts),
   fontIndependentSizes: sizeSummaries.filter(summary => summary.constantAcrossFonts).map(summary => summary.size),
   variableSizes: sizeSummaries.filter(summary => !summary.constantAcrossFonts).map(summary => summary.size),
@@ -430,6 +491,7 @@ outputNode.innerHTML = out;
 summaryNode.hidden = false;
 summaryNode.textContent = formatSummary(report);
 renderSummaryGrid(report);
+renderFontSummaryGrid(report);
 
 if (reportRequested) {
   publishNavigationReport(report);
@@ -476,7 +538,7 @@ function renderProbeRail() {
   const presets = EMOJI_PROBE_PRESETS.map(preset => ({
     label: preset.label,
     href: buildProbeHref({ presetKey: preset.key }),
-    active: activePresetKey === preset.key || (arraysEqual(sizes, preset.sizes) && thresholdPx === preset.threshold),
+    active: isEmojiPresetActive(preset),
   }));
 
   probeRailNode.replaceChildren(...presets.map(createProbeLink));
@@ -486,7 +548,7 @@ function renderPresetCards() {
   const cards = EMOJI_PROBE_PRESETS.map(preset => createPresetCard({
     label: preset.label,
     href: buildProbeHref({ presetKey: preset.key }),
-    active: activePresetKey === preset.key || (arraysEqual(sizes, preset.sizes) && thresholdPx === preset.threshold),
+    active: isEmojiPresetActive(preset),
     sizeSummary: formatPresetSizes(preset.sizes),
     thresholdSummary: `${preset.threshold.toFixed(2)}px`,
   }));
@@ -543,6 +605,61 @@ function formatPresetSizes(values) {
   return `${values[0]}..${values[values.length - 1]} (${values.length})`;
 }
 
+function isEmojiPresetActive(preset) {
+  return arraysEqual(sizes, preset.sizes) && thresholdPx === preset.threshold;
+}
+
+function findMatchingPresetKey() {
+  const matched = EMOJI_PROBE_PRESETS.find(isEmojiPresetActive);
+  return matched?.key;
+}
+
+function buildFontSummaries() {
+  fontSummaries.length = 0;
+
+  for (const fontFamily of fonts) {
+    let totalMismatches = 0;
+    let maxAbsDiff = 0;
+    let worstEmoji = null;
+    let worstSize = null;
+    const mismatchSizes = [];
+    const correctionDiffs = new Set();
+
+    for (const sz of sizes) {
+      const fontMap = diffsBySizeFont.get(sz);
+      const entries = fontMap?.get(fontFamily) ?? [];
+      const mismatches = entries.filter(entry => Math.abs(entry.diff) >= thresholdPx);
+      if (mismatches.length === 0) continue;
+
+      mismatchSizes.push(sz);
+      totalMismatches += mismatches.length;
+      for (const mismatch of mismatches) {
+        const rounded = Number(mismatch.diff.toFixed(2));
+        correctionDiffs.add(rounded);
+        const absDiff = Math.abs(mismatch.diff);
+        if (absDiff > maxAbsDiff) {
+          maxAbsDiff = absDiff;
+          worstEmoji = mismatch.emoji;
+          worstSize = sz;
+        }
+      }
+    }
+
+    fontSummaries.push({
+      fontFamily,
+      mismatchSizeCount: mismatchSizes.length,
+      mismatchSizes,
+      totalMismatches,
+      maxAbsDiff: Number(maxAbsDiff.toFixed(2)),
+      worstEmoji,
+      worstSize,
+      correctionDiffs: [...correctionDiffs].sort((left, right) => left - right),
+    });
+  }
+
+  return fontSummaries;
+}
+
 function buildProbeHref(options) {
   const next = new URLSearchParams();
   if (options.presetKey !== undefined) {
@@ -597,6 +714,18 @@ function renderSummaryGrid(report) {
   summaryGridNode.replaceChildren(...summaries.map(createSummaryCard));
 }
 
+function renderFontSummaryGrid(report) {
+  const summaries = report.fontSummaries ?? [];
+  if (summaries.length === 0) {
+    fontSummaryGridNode.hidden = true;
+    fontSummaryGridNode.replaceChildren();
+    return;
+  }
+
+  fontSummaryGridNode.hidden = false;
+  fontSummaryGridNode.replaceChildren(...summaries.map(createFontSummaryCard));
+}
+
 function createSummaryCard(summary) {
   const element = document.createElement('article');
   element.className = summary.constantAcrossFonts ? 'summary-card is-constant' : 'summary-card is-variable';
@@ -633,6 +762,71 @@ function createSummaryCard(summary) {
     element.append(worstRow);
   }
   return element;
+}
+
+function createFontSummaryCard(summary) {
+  const tone =
+    summary.totalMismatches === 0
+      ? 'clean'
+      : summary.mismatchSizeCount >= Math.ceil(sizes.length / 2)
+        ? 'hot'
+        : 'noisy';
+  const badgeText =
+    tone === 'clean'
+      ? 'clean'
+      : tone === 'hot'
+        ? 'wide spread'
+        : 'localized';
+
+  const element = document.createElement('article');
+  element.className = `font-card is-${tone}`;
+
+  const titleRow = document.createElement('div');
+  titleRow.className = 'font-card-title';
+  const title = document.createElement('span');
+  title.textContent = compactFontLabel(summary.fontFamily);
+  const badge = document.createElement('span');
+  badge.className = `font-card-badge is-${tone}`;
+  badge.textContent = badgeText;
+  titleRow.append(title, badge);
+
+  const mismatchSizes = summary.mismatchSizes.length === 0 ? 'none' : summary.mismatchSizes.join(', ');
+  const correctionDiffs = summary.correctionDiffs.length === 0
+    ? 'none'
+    : summary.correctionDiffs.map(diff => `${diff > 0 ? '+' : ''}${diff.toFixed(2)}`).join(', ');
+
+  element.append(
+    titleRow,
+    createFontSummaryRow('sizes', mismatchSizes),
+    createFontSummaryRow('mismatch', String(summary.totalMismatches)),
+    createFontSummaryRow('max |diff|', `${summary.maxAbsDiff.toFixed(2)}px`),
+    createFontSummaryRow('corr', correctionDiffs),
+  );
+
+  if (summary.worstEmoji !== null && summary.worstSize !== null) {
+    const worstRow = document.createElement('div');
+    worstRow.className = 'font-card-worst';
+    worstRow.textContent = `worst ${summary.worstEmoji} @ ${summary.worstSize}px`;
+    element.append(worstRow);
+  }
+
+  return element;
+}
+
+function createFontSummaryRow(label, value) {
+  const row = document.createElement('div');
+  row.className = 'font-card-row';
+  const left = document.createElement('span');
+  left.textContent = label;
+  const right = document.createElement('span');
+  right.textContent = value;
+  row.append(left, right);
+  return row;
+}
+
+function compactFontLabel(fontFamily) {
+  const normalized = fontFamily.replaceAll('"', '');
+  return normalized.split(',')[0] ?? normalized;
 }
 
 function getEnvironmentFingerprint() {
