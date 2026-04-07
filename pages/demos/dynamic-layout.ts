@@ -220,6 +220,14 @@ type DynamicLayoutReport = {
   }
 }
 
+type DynamicLayoutProbeState = {
+  pageWidth: number
+  pageHeight: number
+  openaiAngle: number
+  claudeAngle: number
+  showDiagnostics: boolean
+}
+
 type RoutingStats = {
   bandCount: number
   blockedBandCount: number
@@ -255,6 +263,8 @@ const assetCardGridNode = document.getElementById('assetCardGrid')
 if (!(assetCardGridNode instanceof HTMLElement)) throw new Error('#assetCardGrid not found')
 const summaryPanelNode = document.getElementById('summaryPanel')
 if (!(summaryPanelNode instanceof HTMLElement)) throw new Error('#summaryPanel not found')
+const presetCardGridNode = document.getElementById('presetCardGrid')
+if (!(presetCardGridNode instanceof HTMLElement)) throw new Error('#presetCardGrid not found')
 const probeRailNode = document.getElementById('probeRail')
 if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found')
 
@@ -263,6 +273,7 @@ type DomCache = {
   telemetry: HTMLElement // cache lifetime: page
   assetCards: HTMLElement // cache lifetime: page
   summary: HTMLElement // cache lifetime: page
+  presetCards: HTMLElement // cache lifetime: page
   probeRail: HTMLElement // cache lifetime: page
   page: HTMLElement // cache lifetime: page
   headline: HTMLHeadingElement // cache lifetime: page
@@ -276,13 +287,6 @@ type DomCache = {
 const preparedByKey = new Map<string, PreparedTextWithSegments>()
 const params = new URLSearchParams(location.search)
 const requestedPreset = findPresetParam(params.get('preset'))
-const presetOverridesActive =
-  params.has('pageWidth') ||
-  params.has('pageHeight') ||
-  params.has('openaiAngle') ||
-  params.has('claudeAngle') ||
-  params.has('showDiagnostics')
-const activePresetKey = requestedPreset !== null && !presetOverridesActive ? requestedPreset.key : null
 const requestId = params.get('requestId') ?? undefined
 const reportRequested = params.get('report') === '1'
 const pageWidthOverride = parseDimensionParam(params.get('pageWidth')) ?? requestedPreset?.pageWidth ?? null
@@ -303,6 +307,7 @@ let hoveredLogo: LogoKind | null = null
 let committedTextProjection: TextProjection | null = null
 let reportPublished = false
 let lastCommittedReport: DynamicLayoutReport | null = null
+let lastProbeUiSignature: string | null = null
 const logoAnimations: { openai: LogoAnimationState; claude: LogoAnimationState } = {
   openai: { angle: parseAngleParam(params.get('openaiAngle'), requestedPreset?.openaiAngle ?? 0), spin: null },
   claude: { angle: parseAngleParam(params.get('claudeAngle'), requestedPreset?.claudeAngle ?? 0), spin: null },
@@ -318,6 +323,7 @@ const domCache: DomCache = {
   telemetry: telemetryNode,
   assetCards: assetCardGridNode,
   summary: summaryPanelNode,
+  presetCards: presetCardGridNode,
   probeRail: probeRailNode,
   page: pageNode,
   headline: createHeadline(),
@@ -328,7 +334,7 @@ const domCache: DomCache = {
   bodyLines: [],
 }
 
-renderProbeRail()
+syncPresetUi()
 
 function createHeadline(): HTMLHeadingElement {
   const element = document.createElement('h1')
@@ -1064,6 +1070,7 @@ function commitFrame(now: number): boolean {
     leftRouting,
     rightRouting,
   )
+  syncPresetUi()
   syncAssetCards(lastCommittedReport)
   syncSummaryPanel(lastCommittedReport)
   maybePublishReport()
@@ -1134,9 +1141,16 @@ function buildDynamicLayoutReport(
   leftRouting: RoutingStats,
   rightRouting: RoutingStats,
 ): DynamicLayoutReport {
+  const matchedPreset = findMatchingDynamicLayoutProbePreset({
+    pageWidth: layout.pageWidth,
+    pageHeight: layout.pageHeight,
+    openaiAngle: logoAnimations.openai.angle,
+    claudeAngle: logoAnimations.claude.angle,
+    showDiagnostics,
+  })
   return {
     status: 'ready',
-    presetKey: activePresetKey ?? undefined,
+    presetKey: matchedPreset?.key,
     environment: getEnvironmentFingerprint(),
     page: {
       width: layout.pageWidth,
@@ -1254,6 +1268,7 @@ function syncHint(text: string): void {
 }
 
 function renderProbeRail(): void {
+  const state = getCurrentDynamicLayoutProbeState()
   const presets = [
     {
       label: 'Live',
@@ -1262,27 +1277,76 @@ function renderProbeRail(): void {
         pageWidthOverride === null &&
         pageHeightOverride === null &&
         !showDiagnostics &&
-        logoAnimations.openai.angle === 0 &&
-        logoAnimations.claude.angle === 0,
+        isAngleMatch(state.openaiAngle, 0) &&
+        isAngleMatch(state.claudeAngle, 0),
     },
     ...DYNAMIC_LAYOUT_PROBE_PRESETS.map(preset => ({
       label: preset.label,
       href: buildProbeHref({ presetKey: preset.key }),
-      active: isProbePresetActive(preset),
+      active: isDynamicLayoutProbePresetActive(preset, state),
     })),
   ]
 
   domCache.probeRail.replaceChildren(...presets.map(createProbeLink))
 }
 
-function isProbePresetActive(preset: DynamicLayoutProbePreset): boolean {
+function renderPresetCards(): void {
+  const state = getCurrentDynamicLayoutProbeState()
+  const cards = DYNAMIC_LAYOUT_PROBE_PRESETS.map(preset =>
+    createPresetCard({
+      label: preset.label,
+      href: buildProbeHref({ presetKey: preset.key }),
+      active: isDynamicLayoutProbePresetActive(preset, state),
+      sizeSummary: `${preset.pageWidth}x${preset.pageHeight}`,
+      angleSummary: `${formatAngle(preset.openaiAngle)} / ${formatAngle(preset.claudeAngle)}`,
+      diagnosticSummary: preset.showDiagnostics ? 'panel on' : 'panel off',
+    }),
+  )
+  domCache.presetCards.replaceChildren(...cards)
+}
+
+function syncPresetUi(): void {
+  const state = getCurrentDynamicLayoutProbeState()
+  const signature = [
+    state.pageWidth,
+    state.pageHeight,
+    state.showDiagnostics ? '1' : '0',
+    state.openaiAngle.toFixed(3),
+    state.claudeAngle.toFixed(3),
+  ].join(':')
+  if (signature === lastProbeUiSignature) return
+  lastProbeUiSignature = signature
+  renderProbeRail()
+  renderPresetCards()
+}
+
+function getCurrentDynamicLayoutProbeState(): DynamicLayoutProbeState {
+  const root = document.documentElement
+  return {
+    pageWidth: pageWidthOverride ?? root.clientWidth,
+    pageHeight: pageHeightOverride ?? root.clientHeight,
+    openaiAngle: logoAnimations.openai.angle,
+    claudeAngle: logoAnimations.claude.angle,
+    showDiagnostics,
+  }
+}
+
+function findMatchingDynamicLayoutProbePreset(
+  state: DynamicLayoutProbeState,
+): DynamicLayoutProbePreset | null {
+  return DYNAMIC_LAYOUT_PROBE_PRESETS.find(preset => isDynamicLayoutProbePresetActive(preset, state)) ?? null
+}
+
+function isDynamicLayoutProbePresetActive(
+  preset: DynamicLayoutProbePreset,
+  state: DynamicLayoutProbeState,
+): boolean {
   return (
-    activePresetKey === preset.key ||
-    pageWidthOverride === preset.pageWidth &&
-    pageHeightOverride === preset.pageHeight &&
-    showDiagnostics === preset.showDiagnostics &&
-    isAngleMatch(logoAnimations.openai.angle, preset.openaiAngle) &&
-    isAngleMatch(logoAnimations.claude.angle, preset.claudeAngle)
+    state.pageWidth === preset.pageWidth &&
+    state.pageHeight === preset.pageHeight &&
+    state.showDiagnostics === preset.showDiagnostics &&
+    isAngleMatch(state.openaiAngle, preset.openaiAngle) &&
+    isAngleMatch(state.claudeAngle, preset.claudeAngle)
   )
 }
 
@@ -1292,6 +1356,53 @@ function createProbeLink(definition: { label: string; href: string; active: bool
   element.href = definition.href
   element.textContent = definition.label
   return element
+}
+
+function createPresetCard(definition: {
+  label: string
+  href: string
+  active: boolean
+  sizeSummary: string
+  angleSummary: string
+  diagnosticSummary: string
+}): HTMLAnchorElement {
+  const element = document.createElement('a')
+  element.className = definition.active ? 'preset-card is-active' : 'preset-card'
+  element.href = definition.href
+
+  const head = document.createElement('div')
+  head.className = 'preset-card-head'
+  const title = document.createElement('span')
+  title.className = 'preset-card-title'
+  title.textContent = definition.label
+  head.append(title)
+  if (definition.active) {
+    const badge = document.createElement('span')
+    badge.className = 'preset-card-badge'
+    badge.textContent = 'active'
+    head.append(badge)
+  }
+
+  element.append(
+    head,
+    createPresetCardRow('size', definition.sizeSummary),
+    createPresetCardRow('angles', definition.angleSummary),
+    createPresetCardRow('diag', definition.diagnosticSummary),
+  )
+  return element
+}
+
+function createPresetCardRow(label: string, value: string): HTMLElement {
+  const row = document.createElement('div')
+  row.className = 'preset-card-row'
+  const left = document.createElement('span')
+  left.className = 'preset-card-label'
+  left.textContent = label
+  const right = document.createElement('span')
+  right.className = 'preset-card-value'
+  right.textContent = value
+  row.append(left, right)
+  return row
 }
 
 function buildProbeHref(options: {

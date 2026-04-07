@@ -258,6 +258,14 @@ type EditorialEngineReport = {
   }
 }
 
+type EditorialEngineProbeState = {
+  pageWidth: number
+  pageHeight: number
+  orbPreset: OrbPreset
+  animate: boolean
+  showDiagnostics: boolean
+}
+
 function getRequiredDiv(id: string): HTMLDivElement {
   const element = document.getElementById(id)
   if (!(element instanceof HTMLDivElement)) throw new Error(`#${id} not found`)
@@ -373,6 +381,8 @@ const telemetryNode = document.getElementById('telemetryPanel')
 if (!(telemetryNode instanceof HTMLPreElement)) throw new Error('#telemetryPanel not found')
 const summaryPanelNode = document.getElementById('summaryPanel')
 if (!(summaryPanelNode instanceof HTMLPreElement)) throw new Error('#summaryPanel not found')
+const presetCardGridNode = document.getElementById('presetCardGrid')
+if (!(presetCardGridNode instanceof HTMLElement)) throw new Error('#presetCardGrid not found')
 const probeRailNode = document.getElementById('probeRail')
 if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found')
 
@@ -386,13 +396,6 @@ const orbDefs: OrbDefinition[] = [
 
 const params = new URLSearchParams(location.search)
 const requestedPreset = findPresetParam(params.get('preset'))
-const presetOverridesActive =
-  params.has('pageWidth') ||
-  params.has('pageHeight') ||
-  params.has('showDiagnostics') ||
-  params.has('orbPreset') ||
-  params.has('animate')
-const activePresetKey = requestedPreset !== null && !presetOverridesActive ? requestedPreset.key : null
 const requestId = params.get('requestId') ?? undefined
 const reportRequested = params.get('report') === '1'
 const pageWidthOverride = parseDimensionParam(params.get('pageWidth')) ?? requestedPreset?.pageWidth ?? null
@@ -459,6 +462,7 @@ const domCache = {
   hint: hintNode, // cache lifetime: same as page
   telemetry: telemetryNode, // cache lifetime: same as page
   summary: summaryPanelNode, // cache lifetime: same as page
+  presetCards: presetCardGridNode, // cache lifetime: same as page
   probeRail: probeRailNode, // cache lifetime: same as page
   dropCap: dropCapEl, // cache lifetime: same as page
   bodyLines: linePool, // cache lifetime: on body line-count changes
@@ -485,8 +489,9 @@ const st: AppState = {
 let committedTextProjection: TextProjection | null = null
 let reportPublished = false
 let lastCommittedReport: EditorialEngineReport | null = null
+let lastProbeUiSignature: string | null = null
 
-renderProbeRail()
+syncPresetUi()
 
 function syncPool<T extends HTMLElement>(pool: T[], count: number, create: () => T): void {
   while (pool.length < count) {
@@ -1164,6 +1169,7 @@ function render(now: number): boolean {
     orbs,
   )
   syncHint(copyHintText(pageWidth, pageHeight, columnCount, activeOrbCount))
+  syncPresetUi()
   syncSummaryPanel(lastCommittedReport)
   syncTelemetry(lastCommittedReport)
   maybePublishReport(lastCommittedReport)
@@ -1193,6 +1199,13 @@ function buildEditorialEngineReport(
   routing: RoutingStats,
   orbs: Orb[],
 ): EditorialEngineReport {
+  const matchedPreset = findMatchingEditorialEngineProbePreset({
+    pageWidth,
+    pageHeight,
+    orbPreset,
+    animate: animateOrbs,
+    showDiagnostics,
+  })
   const activeOrbs = orbs.slice(0, activeOrbCount)
   const snapshots = activeOrbs.map(orb => ({
     x: Number(orb.x.toFixed(3)),
@@ -1206,7 +1219,7 @@ function buildEditorialEngineReport(
 
   return {
     status: 'ready',
-    presetKey: activePresetKey ?? undefined,
+    presetKey: matchedPreset?.key,
     environment: getEnvironmentFingerprint(),
     page: {
       width: pageWidth,
@@ -1313,6 +1326,7 @@ function syncHint(text: string): void {
 }
 
 function renderProbeRail(): void {
+  const state = getCurrentEditorialEngineProbeState()
   const presets = [
     {
       label: 'Live',
@@ -1322,21 +1336,71 @@ function renderProbeRail(): void {
     ...EDITORIAL_ENGINE_PROBE_PRESETS.map(preset => ({
       label: preset.label,
       href: buildPresetHref({ presetKey: preset.key }),
-      active: isProbePresetActive(preset),
+      active: isEditorialEngineProbePresetActive(preset, state),
     })),
   ]
 
   domCache.probeRail.replaceChildren(...presets.map(createProbeLink))
 }
 
-function isProbePresetActive(preset: EditorialEngineProbePreset): boolean {
+function renderPresetCards(): void {
+  const state = getCurrentEditorialEngineProbeState()
+  const cards = EDITORIAL_ENGINE_PROBE_PRESETS.map(preset =>
+    createPresetCard({
+      label: preset.label,
+      href: buildPresetHref({ presetKey: preset.key }),
+      active: isEditorialEngineProbePresetActive(preset, state),
+      sizeSummary: `${preset.pageWidth}x${preset.pageHeight}`,
+      orbSummary: preset.orbPreset,
+      motionSummary: preset.animate ? 'live' : 'paused',
+      diagnosticSummary: preset.showDiagnostics ? 'panel on' : 'panel off',
+    }),
+  )
+  domCache.presetCards.replaceChildren(...cards)
+}
+
+function syncPresetUi(): void {
+  const state = getCurrentEditorialEngineProbeState()
+  const signature = [
+    state.pageWidth,
+    state.pageHeight,
+    state.orbPreset,
+    state.animate ? '1' : '0',
+    state.showDiagnostics ? '1' : '0',
+  ].join(':')
+  if (signature === lastProbeUiSignature) return
+  lastProbeUiSignature = signature
+  renderProbeRail()
+  renderPresetCards()
+}
+
+function getCurrentEditorialEngineProbeState(): EditorialEngineProbeState {
+  const root = document.documentElement
+  return {
+    pageWidth: pageWidthOverride ?? root.clientWidth,
+    pageHeight: pageHeightOverride ?? root.clientHeight,
+    orbPreset,
+    animate: animateOrbs,
+    showDiagnostics,
+  }
+}
+
+function findMatchingEditorialEngineProbePreset(
+  state: EditorialEngineProbeState,
+): EditorialEngineProbePreset | null {
+  return EDITORIAL_ENGINE_PROBE_PRESETS.find(preset => isEditorialEngineProbePresetActive(preset, state)) ?? null
+}
+
+function isEditorialEngineProbePresetActive(
+  preset: EditorialEngineProbePreset,
+  state: EditorialEngineProbeState,
+): boolean {
   return (
-    activePresetKey === preset.key ||
-    pageWidthOverride === preset.pageWidth &&
-    pageHeightOverride === preset.pageHeight &&
-    orbPreset === preset.orbPreset &&
-    animateOrbs === preset.animate &&
-    showDiagnostics === preset.showDiagnostics
+    state.pageWidth === preset.pageWidth &&
+    state.pageHeight === preset.pageHeight &&
+    state.orbPreset === preset.orbPreset &&
+    state.animate === preset.animate &&
+    state.showDiagnostics === preset.showDiagnostics
   )
 }
 
@@ -1346,6 +1410,55 @@ function createProbeLink(definition: { label: string; href: string; active: bool
   element.href = definition.href
   element.textContent = definition.label
   return element
+}
+
+function createPresetCard(definition: {
+  label: string
+  href: string
+  active: boolean
+  sizeSummary: string
+  orbSummary: string
+  motionSummary: string
+  diagnosticSummary: string
+}): HTMLAnchorElement {
+  const element = document.createElement('a')
+  element.className = definition.active ? 'preset-card is-active' : 'preset-card'
+  element.href = definition.href
+
+  const head = document.createElement('div')
+  head.className = 'preset-card-head'
+  const title = document.createElement('span')
+  title.className = 'preset-card-title'
+  title.textContent = definition.label
+  head.append(title)
+  if (definition.active) {
+    const badge = document.createElement('span')
+    badge.className = 'preset-card-badge'
+    badge.textContent = 'active'
+    head.append(badge)
+  }
+
+  element.append(
+    head,
+    createPresetCardRow('size', definition.sizeSummary),
+    createPresetCardRow('orbs', definition.orbSummary),
+    createPresetCardRow('motion', definition.motionSummary),
+    createPresetCardRow('diag', definition.diagnosticSummary),
+  )
+  return element
+}
+
+function createPresetCardRow(label: string, value: string): HTMLElement {
+  const row = document.createElement('div')
+  row.className = 'preset-card-row'
+  const left = document.createElement('span')
+  left.className = 'preset-card-label'
+  left.textContent = label
+  const right = document.createElement('span')
+  right.className = 'preset-card-value'
+  right.textContent = value
+  row.append(left, right)
+  return row
 }
 
 function buildPresetHref(options: {

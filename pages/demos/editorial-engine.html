@@ -75,6 +75,73 @@
       white-space: pre-wrap; pointer-events: none;
       backdrop-filter: blur(10px);
     }
+    .preset-card-grid {
+      position: fixed; right: 16px; bottom: 16px; z-index: 101;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+      width: min(380px, calc(100vw - 32px));
+    }
+    .preset-card {
+      display: block;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(7, 8, 12, 0.72);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 24px 50px rgba(0,0,0,0.28);
+      color: rgba(255,255,255,0.84);
+      text-decoration: none;
+      backdrop-filter: blur(10px);
+    }
+    .preset-card:hover {
+      border-color: rgba(255,255,255,0.22);
+      color: #fff;
+    }
+    .preset-card.is-active {
+      background: rgba(196,163,90,0.16);
+      border-color: rgba(196,163,90,0.45);
+      color: #fff4d7;
+    }
+    .preset-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 0 0 6px;
+    }
+    .preset-card-title {
+      font: 700 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .preset-card-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(196,163,90,0.18);
+      color: #fff4d7;
+      font: 700 10px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .preset-card-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font: 500 11px/1.45 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+    .preset-card-row + .preset-card-row {
+      margin-top: 2px;
+    }
+    .preset-card-label {
+      color: rgba(255,255,255,0.56);
+    }
+    .preset-card-value {
+      color: rgba(255,255,255,0.88);
+      text-align: right;
+    }
     .probe-rail {
       position: fixed; left: 16px; bottom: 16px; z-index: 101;
       display: flex; flex-wrap: wrap; gap: 8px;
@@ -131,6 +198,12 @@
         font-size: 11px; line-height: 1.4;
       }
 
+      .preset-card-grid {
+        right: 12px; bottom: 160px;
+        width: calc(100vw - 24px);
+        grid-template-columns: 1fr;
+      }
+
       .probe-rail {
         left: 12px; bottom: 12px; max-width: calc(100vw - 24px);
         padding: 10px;
@@ -147,6 +220,7 @@
   <div id="hintPill" class="hint">Drag the orbs &middot; Click to pause &middot; Zero DOM reads</div>
   <pre id="telemetryPanel" class="telemetry" hidden></pre>
   <pre id="summaryPanel" class="summary-panel" aria-live="polite"></pre>
+  <section id="presetCardGrid" class="preset-card-grid" aria-label="Editorial engine preset cards"></section>
   <nav id="probeRail" class="probe-rail" aria-label="Editorial engine probe presets"></nav>
   <a class="credit" href="https://x.com/somnai_dreams" target="_blank" rel="noreferrer">Made by @somnai_dreams</a>
 

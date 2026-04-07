@@ -178,6 +178,85 @@
         text-align: right;
       }
 
+      .preset-card-grid {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 10px;
+        width: min(380px, calc(100vw - 36px));
+        z-index: 6;
+      }
+
+      .preset-card {
+        padding: 12px 14px;
+        border-radius: 18px;
+        background: rgba(246, 240, 230, 0.92);
+        border: 1px solid rgba(17, 16, 13, 0.12);
+        box-shadow: 0 18px 42px rgba(17, 16, 13, 0.12);
+        backdrop-filter: blur(10px);
+        color: rgba(17, 16, 13, 0.84);
+        text-decoration: none;
+      }
+
+      .preset-card:hover {
+        border-color: rgba(17, 16, 13, 0.22);
+      }
+
+      .preset-card.is-active {
+        border-color: rgba(217, 119, 87, 0.36);
+        background: rgba(251, 246, 240, 0.96);
+        color: rgba(120, 52, 28, 0.96);
+      }
+
+      .preset-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin: 0 0 6px;
+      }
+
+      .preset-card-title {
+        font: 700 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .preset-card-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 20px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: rgba(217, 119, 87, 0.14);
+        color: rgba(120, 52, 28, 0.92);
+        font: 700 10px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .preset-card-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        font: 500 11px/1.45 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      }
+
+      .preset-card-row + .preset-card-row {
+        margin-top: 2px;
+      }
+
+      .preset-card-label {
+        color: rgba(79, 70, 59, 0.74);
+      }
+
+      .preset-card-value {
+        color: rgba(17, 16, 13, 0.9);
+        text-align: right;
+      }
+
       .probe-rail {
         position: fixed;
         left: 18px;
@@ -318,6 +397,13 @@
           grid-template-columns: 1fr;
         }
 
+        .preset-card-grid {
+          right: 12px;
+          bottom: 160px;
+          width: min(100vw - 24px, 360px);
+          grid-template-columns: 1fr;
+        }
+
         .probe-rail {
           left: 12px;
           bottom: 12px;
@@ -341,6 +427,7 @@
       <aside id="telemetryPanel" class="telemetry" hidden></aside>
       <section id="assetCardGrid" class="asset-card-grid" aria-label="Dynamic layout asset cards"></section>
       <aside id="summaryPanel" class="summary-panel" aria-live="polite"></aside>
+      <section id="presetCardGrid" class="preset-card-grid" aria-label="Dynamic layout preset cards"></section>
       <nav id="probeRail" class="probe-rail" aria-label="Dynamic layout probe presets"></nav>
       <div id="stage" class="stage"></div>
     </main>
