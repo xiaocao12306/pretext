@@ -381,6 +381,8 @@ const telemetryNode = document.getElementById('telemetryPanel')
 if (!(telemetryNode instanceof HTMLPreElement)) throw new Error('#telemetryPanel not found')
 const summaryPanelNode = document.getElementById('summaryPanel')
 if (!(summaryPanelNode instanceof HTMLPreElement)) throw new Error('#summaryPanel not found')
+const routeCardGridNode = document.getElementById('routeCardGrid')
+if (!(routeCardGridNode instanceof HTMLElement)) throw new Error('#routeCardGrid not found')
 const presetCardGridNode = document.getElementById('presetCardGrid')
 if (!(presetCardGridNode instanceof HTMLElement)) throw new Error('#presetCardGrid not found')
 const probeRailNode = document.getElementById('probeRail')
@@ -462,6 +464,7 @@ const domCache = {
   hint: hintNode, // cache lifetime: same as page
   telemetry: telemetryNode, // cache lifetime: same as page
   summary: summaryPanelNode, // cache lifetime: same as page
+  routeCards: routeCardGridNode, // cache lifetime: same as page
   presetCards: presetCardGridNode, // cache lifetime: same as page
   probeRail: probeRailNode, // cache lifetime: same as page
   dropCap: dropCapEl, // cache lifetime: same as page
@@ -1372,6 +1375,7 @@ function syncPresetUi(): void {
   lastProbeUiSignature = signature
   renderProbeRail()
   renderPresetCards()
+  syncScenarioCards()
 }
 
 function getCurrentEditorialEngineProbeState(): EditorialEngineProbeState {
@@ -1461,6 +1465,11 @@ function createPresetCardRow(label: string, value: string): HTMLElement {
   return row
 }
 
+function syncScenarioCards(): void {
+  const cards = buildScenarioCardDefinitions().map(createScenarioCard)
+  domCache.routeCards.replaceChildren(...cards)
+}
+
 function buildPresetHref(options: {
   presetKey?: string
   pageWidth?: number
@@ -1481,6 +1490,115 @@ function buildPresetHref(options: {
   }
   const query = next.toString()
   return query.length === 0 ? location.pathname : `${location.pathname}?${query}`
+}
+
+function buildScenarioCardDefinitions(): Array<{
+  label: string
+  href: string
+  mode: string
+  route: string
+  path: string
+}> {
+  const state = getCurrentEditorialEngineProbeState()
+  const matchedPreset = findMatchingEditorialEngineProbePreset(state)
+  const query = buildScenarioQuery(state, matchedPreset)
+  const demoPath = normalizeEditorialEnginePath(location.pathname, 'demo')
+  const rootPath = normalizeEditorialEnginePath(location.pathname, 'root')
+  return [
+    {
+      label: 'Demo path',
+      href: `${demoPath}${query}`,
+      mode: matchedPreset?.key ?? 'manual',
+      route: 'interactive',
+      path: demoPath,
+    },
+    {
+      label: 'Root alias',
+      href: `${rootPath}${query}`,
+      mode: matchedPreset?.key ?? 'manual',
+      route: 'redirect',
+      path: rootPath,
+    },
+    {
+      label: 'Report run',
+      href: `${demoPath}${appendReportQuery(query)}`,
+      mode: matchedPreset?.key ?? 'manual',
+      route: 'checker',
+      path: `${demoPath}?report=1`,
+    },
+  ]
+}
+
+function buildScenarioQuery(
+  state: EditorialEngineProbeState,
+  matchedPreset: EditorialEngineProbePreset | null,
+): string {
+  const next = new URLSearchParams()
+  if (matchedPreset !== null) {
+    next.set('preset', matchedPreset.key)
+  } else {
+    next.set('pageWidth', String(state.pageWidth))
+    next.set('pageHeight', String(state.pageHeight))
+    if (state.orbPreset !== 'default') next.set('orbPreset', state.orbPreset)
+    if (!state.animate) next.set('animate', '0')
+    next.set('showDiagnostics', state.showDiagnostics ? '1' : '0')
+  }
+  const query = next.toString()
+  return query.length === 0 ? '' : `?${query}`
+}
+
+function appendReportQuery(query: string): string {
+  const next = new URLSearchParams(query.startsWith('?') ? query.slice(1) : query)
+  next.set('report', '1')
+  return `?${next.toString()}`
+}
+
+function normalizeEditorialEnginePath(pathname: string, target: 'demo' | 'root'): string {
+  if (target === 'demo') {
+    return pathname.includes('/demos/')
+      ? pathname.replace(/\/editorial-engine\/?$/, '/editorial-engine')
+      : pathname.replace(/\/editorial-engine\/?$/, '/demos/editorial-engine')
+  }
+  return pathname.includes('/demos/')
+    ? pathname.replace(/\/demos\/editorial-engine\/?$/, '/editorial-engine')
+    : pathname.replace(/\/editorial-engine\/?$/, '/editorial-engine')
+}
+
+function createScenarioCard(definition: {
+  label: string
+  href: string
+  mode: string
+  route: string
+  path: string
+}): HTMLAnchorElement {
+  const element = document.createElement('a')
+  element.className = 'route-card'
+  element.href = definition.href
+
+  const title = document.createElement('div')
+  title.className = 'route-card-title'
+  title.textContent = definition.label
+
+  element.append(
+    title,
+    createRouteCardRow('mode', definition.mode),
+    createRouteCardRow('route', definition.route),
+    createRouteCardRow('path', definition.path),
+  )
+  return element
+}
+
+function createRouteCardRow(label: string, value: string): HTMLElement {
+  const row = document.createElement('div')
+  row.className = 'route-card-row'
+  const left = document.createElement('span')
+  left.className = 'route-card-label'
+  left.textContent = label
+  const right = document.createElement('span')
+  right.className = 'route-card-value'
+  right.textContent = value
+  row.append(left, right)
+  return row
 }
 
 function syncTelemetry(report: EditorialEngineReport | null): void {
