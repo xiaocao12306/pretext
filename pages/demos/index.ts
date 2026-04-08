@@ -16,59 +16,75 @@ type ActionDefinition = {
   meta: string
 }
 
+type RouteActionDefinition = {
+  demoPath: string
+  rootPath: string
+  demoMeta: string
+  rootMeta: string
+  reportMeta: string
+}
+
 mountAssetPreview('dynamicLayoutAssets', [
   { label: 'OpenAI', src: resolveImportedAssetUrl(openaiLogoUrl) },
   { label: 'Claude', src: resolveImportedAssetUrl(claudeLogoUrl) },
 ])
 
 mountActions('accordionActions', [
-  {
-    label: 'Live demo',
-    href: '../accordion',
-    meta: 'predicted panel heights • route cards • open-state presets',
-  },
+  ...buildRouteActions({
+    demoPath: './accordion',
+    rootPath: '../accordion',
+    demoMeta: 'predicted panel heights • route cards • open-state presets',
+    rootMeta: 'top-level alias • redirect parity • query preserved',
+    reportMeta: 'report=1 • accordion-check target • hash export',
+  }),
   ...ACCORDION_PROBE_PRESETS.map(preset => ({
-    label: preset.label,
-    href: buildHref('../accordion', { preset: preset.key }),
+    label: `Preset ${preset.label}`,
+    href: buildHref('./accordion', { preset: preset.key }),
     meta: `${preset.pageWidth}px page • open ${preset.openItemId}`,
   })),
 ])
 
 mountActions('bubbleActions', [
-  {
-    label: 'Live demo',
-    href: '../bubbles',
-    meta: 'shrinkwrap search • wasted-area readout • route cards',
-  },
+  ...buildRouteActions({
+    demoPath: './bubbles',
+    rootPath: '../bubbles',
+    demoMeta: 'shrinkwrap search • wasted-area readout • route cards',
+    rootMeta: 'top-level alias • redirect parity • query preserved',
+    reportMeta: 'report=1 • bubbles-check target • waste summary',
+  }),
   ...BUBBLE_PROBE_PRESETS.map(preset => ({
-    label: preset.label,
-    href: buildHref('../bubbles', { preset: preset.key }),
+    label: `Preset ${preset.label}`,
+    href: buildHref('./bubbles', { preset: preset.key }),
     meta: `${preset.chatWidth}px chat • ${Math.floor(preset.chatWidth * 0.8)}px bubble max`,
   })),
 ])
 
 mountActions('richNoteActions', [
-  {
-    label: 'Live demo',
-    href: '../rich-note',
-    meta: 'inline-flow chips • route cards • width presets',
-  },
+  ...buildRouteActions({
+    demoPath: './rich-note',
+    rootPath: '../rich-note',
+    demoMeta: 'inline-flow chips • route cards • width presets',
+    rootMeta: 'top-level alias • redirect parity • query preserved',
+    reportMeta: 'report=1 • rich-note-check target • note summary',
+  }),
   ...RICH_NOTE_PROBE_PRESETS.map(preset => ({
-    label: preset.label,
-    href: buildHref('../rich-note', { preset: preset.key }),
+    label: `Preset ${preset.label}`,
+    href: buildHref('./rich-note', { preset: preset.key }),
     meta: `${preset.bodyWidth}px body • ${preset.bodyWidth + 40}px shell`,
   })),
 ])
 
 mountActions('dynamicLayoutActions', [
-  {
-    label: 'Live demo',
-    href: '../dynamic-layout',
-    meta: 'free resize • live logo rotation • asset wrap hulls',
-  },
+  ...buildRouteActions({
+    demoPath: './dynamic-layout',
+    rootPath: '../dynamic-layout',
+    demoMeta: 'free resize • live logo rotation • asset wrap hulls',
+    rootMeta: 'top-level alias • redirect parity • query preserved',
+    reportMeta: 'report=1 • dynamic-layout-check target • asset routing',
+  }),
   ...DYNAMIC_LAYOUT_PROBE_PRESETS.map(preset => ({
-    label: preset.label,
-    href: buildHref('../dynamic-layout', { preset: preset.key }),
+    label: `Preset ${preset.label}`,
+    href: buildHref('./dynamic-layout', { preset: preset.key }),
     meta:
       `${preset.pageWidth}x${preset.pageHeight} • ` +
       `OA ${formatAngle(preset.openaiAngle)} • ` +
@@ -77,35 +93,48 @@ mountActions('dynamicLayoutActions', [
 ])
 
 mountActions('editorialEngineActions', [
-  {
-    label: 'Live demo',
-    href: '../editorial-engine',
-    meta: 'drag orbs • live reflow • multicolumn continuation',
-  },
+  ...buildRouteActions({
+    demoPath: './editorial-engine',
+    rootPath: '../editorial-engine',
+    demoMeta: 'drag orbs • live reflow • multicolumn continuation',
+    rootMeta: 'top-level alias • redirect parity • query preserved',
+    reportMeta: 'report=1 • editorial-engine-check target • orb routing',
+  }),
   ...EDITORIAL_ENGINE_PROBE_PRESETS.map(preset => ({
-    label: preset.label,
-    href: buildHref('../editorial-engine', { preset: preset.key }),
+    label: `Preset ${preset.label}`,
+    href: buildHref('./editorial-engine', { preset: preset.key }),
     meta:
       `${preset.pageWidth}x${preset.pageHeight} • ` +
       `${preset.orbPreset} • ${preset.animate ? 'live' : 'paused'}`,
   })),
 ])
 
-mountActions('justificationActions', JUSTIFICATION_PROBE_PRESETS.map(preset => ({
-  label: preset.label,
-  href: buildHref('../justification-comparison', { preset: preset.key }),
-  meta: `${preset.width}px • ${preset.showIndicators ? 'indicators on' : 'indicators off'}`,
-})))
+mountActions('justificationActions', [
+  ...buildRouteActions({
+    demoPath: './justification-comparison',
+    rootPath: '../justification-comparison',
+    demoMeta: 'css rivers • greedy hyphenation • optimal paragraph layout',
+    rootMeta: 'top-level alias • redirect parity • query preserved',
+    reportMeta: 'report=1 • justification-check target • comparison digest',
+  }),
+  ...JUSTIFICATION_PROBE_PRESETS.map(preset => ({
+    label: `Preset ${preset.label}`,
+    href: buildHref('./justification-comparison', { preset: preset.key }),
+    meta: `${preset.width}px • ${preset.showIndicators ? 'indicators on' : 'indicators off'}`,
+  })),
+])
 
 mountActions('emojiActions', [
-  {
-    label: 'Live sweep',
-    href: '../emoji-test',
-    meta: 'multi-font batch • size cards • font cards',
-  },
+  ...buildRouteActions({
+    demoPath: './emoji-test',
+    rootPath: '../emoji-test',
+    demoMeta: 'multi-font batch • size cards • font cards',
+    rootMeta: 'top-level alias • redirect parity • query preserved',
+    reportMeta: 'report=1 • emoji-check target • font drift summary',
+  }),
   ...EMOJI_PROBE_PRESETS.map(preset => ({
-    label: preset.label,
-    href: buildHref('../emoji-test', { preset: preset.key }),
+    label: `Preset ${preset.label}`,
+    href: buildHref('./emoji-test', { preset: preset.key }),
     meta: `${formatSizeSummary(preset.sizes)} • th ${preset.threshold.toFixed(2)}px`,
   })),
 ])
@@ -153,6 +182,26 @@ function createAssetChip(asset: { label: string; src: string }): HTMLElement {
   label.textContent = asset.label
   chip.append(image, label)
   return chip
+}
+
+function buildRouteActions(definition: RouteActionDefinition): ActionDefinition[] {
+  return [
+    {
+      label: 'Demo path',
+      href: definition.demoPath,
+      meta: definition.demoMeta,
+    },
+    {
+      label: 'Root alias',
+      href: definition.rootPath,
+      meta: definition.rootMeta,
+    },
+    {
+      label: 'Report run',
+      href: buildHref(definition.demoPath, { report: 1 }),
+      meta: definition.reportMeta,
+    },
+  ]
 }
 
 function buildHref(basePath: string, params: Record<string, string | number | null>): string {
