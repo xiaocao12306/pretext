@@ -4,6 +4,23 @@ export type JustificationProbePresetKey =
   | 'probe-364'
   | 'wide-520'
 
+export type BubbleProbePresetKey =
+  | 'narrow-260'
+  | 'default-340'
+  | 'wide-460'
+
+export type BubbleProbePreset = {
+  key: BubbleProbePresetKey
+  label: string
+  chatWidth: number
+}
+
+export const BUBBLE_PROBE_PRESETS: BubbleProbePreset[] = [
+  { key: 'narrow-260', label: 'Narrow 260', chatWidth: 260 },
+  { key: 'default-340', label: 'Default 340', chatWidth: 340 },
+  { key: 'wide-460', label: 'Wide 460', chatWidth: 460 },
+]
+
 export type JustificationProbePreset = {
   key: JustificationProbePresetKey
   label: string
@@ -88,6 +105,10 @@ export const EDITORIAL_ENGINE_PROBE_PRESETS: EditorialEngineProbePreset[] = [
 
 export function findJustificationProbePreset(key: string): JustificationProbePreset | null {
   return JUSTIFICATION_PROBE_PRESETS.find(preset => preset.key === key) ?? null
+}
+
+export function findBubbleProbePreset(key: string): BubbleProbePreset | null {
+  return BUBBLE_PROBE_PRESETS.find(preset => preset.key === key) ?? null
 }
 
 export function findEmojiProbePreset(key: string): EmojiProbePreset | null {

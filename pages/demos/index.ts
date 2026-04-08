@@ -1,4 +1,5 @@
 import {
+  BUBBLE_PROBE_PRESETS,
   DYNAMIC_LAYOUT_PROBE_PRESETS,
   EDITORIAL_ENGINE_PROBE_PRESETS,
   EMOJI_PROBE_PRESETS,
@@ -16,6 +17,19 @@ type ActionDefinition = {
 mountAssetPreview('dynamicLayoutAssets', [
   { label: 'OpenAI', src: resolveImportedAssetUrl(openaiLogoUrl) },
   { label: 'Claude', src: resolveImportedAssetUrl(claudeLogoUrl) },
+])
+
+mountActions('bubbleActions', [
+  {
+    label: 'Live demo',
+    href: '../bubbles',
+    meta: 'shrinkwrap search • wasted-area readout • route cards',
+  },
+  ...BUBBLE_PROBE_PRESETS.map(preset => ({
+    label: preset.label,
+    href: buildHref('../bubbles', { preset: preset.key }),
+    meta: `${preset.chatWidth}px chat • ${Math.floor(preset.chatWidth * 0.8)}px bubble max`,
+  })),
 ])
 
 mountActions('dynamicLayoutActions', [

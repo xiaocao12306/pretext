@@ -10,7 +10,20 @@
   (function syncInitialBubbleGeometry() {
     const root = document.documentElement
     const minWidth = 220
-    const requestedWidth = 340
+    const params = new URLSearchParams(location.search)
+    const presetWidths = {
+      'narrow-260': 260,
+      'default-340': 340,
+      'wide-460': 460,
+    }
+    const requestedFromQuery = Number.parseInt(params.get('chatWidth') ?? '', 10)
+    const presetKey = params.get('preset')
+    const presetWidth = presetKey === null ? Number.NaN : presetWidths[presetKey]
+    const requestedWidth = Number.isFinite(requestedFromQuery)
+      ? requestedFromQuery
+      : Number.isFinite(presetWidth)
+        ? presetWidth
+        : 340
     const pageMaxWidth = 1080
     const desktopPageMargin = 32
     const mobilePageMargin = 20
@@ -95,6 +108,156 @@
     min-width: 56px;
     text-align: right;
     color: var(--ink);
+  }
+  .probe-rail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 18px;
+    padding: 14px;
+    border: 1px solid var(--rule);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--panel) 92%, white 8%);
+    box-shadow: 0 18px 40px rgb(54 40 23 / 0.08);
+  }
+  .probe-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--rule) 78%);
+    background: color-mix(in srgb, var(--panel) 88%, white 12%);
+    color: var(--ink);
+    text-decoration: none;
+    font: 600 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    white-space: nowrap;
+  }
+  .probe-link:hover {
+    border-color: color-mix(in srgb, var(--accent) 46%, var(--rule) 54%);
+  }
+  .probe-link.is-active {
+    background: color-mix(in srgb, var(--accent) 14%, white 86%);
+    border-color: color-mix(in srgb, var(--accent) 56%, var(--rule) 44%);
+    color: color-mix(in srgb, var(--accent) 84%, black 16%);
+  }
+  .utility-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 16px;
+    margin: 0 0 18px;
+  }
+  .summary-panel {
+    margin: 0;
+    padding: 16px 18px;
+    border: 1px solid var(--rule);
+    border-radius: 20px;
+    background: color-mix(in srgb, var(--panel) 92%, white 8%);
+    box-shadow: 0 18px 40px rgb(54 40 23 / 0.08);
+    color: var(--ink);
+    font: 12px/1.45 "SF Mono", ui-monospace, monospace;
+    white-space: pre-wrap;
+  }
+  .route-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+  }
+  .route-card {
+    display: block;
+    padding: 12px 14px;
+    border: 1px solid var(--rule);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--panel) 92%, white 8%);
+    color: inherit;
+    text-decoration: none;
+    box-shadow: 0 18px 40px rgb(54 40 23 / 0.08);
+  }
+  .route-card:hover {
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--rule) 65%);
+  }
+  .route-card-title {
+    margin: 0 0 6px;
+    font: 700 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .route-card-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font: 12px/1.45 "SF Mono", ui-monospace, monospace;
+  }
+  .route-card-row + .route-card-row {
+    margin-top: 2px;
+  }
+  .route-card-label {
+    color: var(--muted);
+  }
+  .route-card-value {
+    text-align: right;
+  }
+  .preset-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px;
+    margin: 0 0 18px;
+  }
+  .preset-card {
+    display: block;
+    padding: 12px 14px;
+    border: 1px solid var(--rule);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--panel) 92%, white 8%);
+    color: inherit;
+    text-decoration: none;
+    box-shadow: 0 18px 40px rgb(54 40 23 / 0.08);
+  }
+  .preset-card:hover {
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--rule) 65%);
+  }
+  .preset-card.is-active {
+    background: color-mix(in srgb, var(--accent-soft) 72%, white 28%);
+    border-color: color-mix(in srgb, var(--accent) 54%, var(--rule) 46%);
+  }
+  .preset-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0 0 6px;
+  }
+  .preset-card-title {
+    font: 700 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .preset-card-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 20px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 18%, white 82%);
+    color: color-mix(in srgb, var(--accent) 88%, black 12%);
+    font: 700 10px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .preset-card-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font: 12px/1.45 "SF Mono", ui-monospace, monospace;
+  }
+  .preset-card-row + .preset-card-row {
+    margin-top: 2px;
+  }
+  .preset-card-label {
+    color: var(--muted);
+  }
+  .preset-card-value {
+    text-align: right;
   }
   .grid {
     display: grid;
@@ -187,6 +350,9 @@
     .controls {
       flex-wrap: wrap;
     }
+    .utility-grid {
+      grid-template-columns: 1fr;
+    }
     .grid {
       grid-template-columns: 1fr;
     }
@@ -208,6 +374,12 @@
       <input type="range" id="slider" min="220" max="760" value="340">
       <span class="val" id="val">340px</span>
     </section>
+    <nav id="probeRail" class="probe-rail" aria-label="Bubble shrinkwrap presets"></nav>
+    <section class="utility-grid" aria-label="Bubble shrinkwrap summary and links">
+      <pre id="summaryPanel" class="summary-panel" aria-live="polite"></pre>
+      <section id="routeCardGrid" class="route-card-grid" aria-label="Bubble scenario links"></section>
+    </section>
+    <section id="presetCardGrid" class="preset-card-grid" aria-label="Bubble shrinkwrap preset cards"></section>
   <script>
       (function applyInitialBubbleControls() {
         const slider = document.getElementById('slider')
