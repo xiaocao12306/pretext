@@ -731,6 +731,10 @@ const report = withRequestId({
   fontCount: fonts.length,
   thresholdPx,
   sizes,
+  focus: {
+    size: focusState.size,
+    fontFamily: focusState.fontFamily,
+  },
   totalMismatchObservations,
   sizeSummaries,
   fontSummaries: buildFontSummaries(),
@@ -830,6 +834,15 @@ function renderContextCards(report) {
         ['fonts', String(fonts.length)],
         ['emoji', String(emoji.length)],
         ['variable', report === null ? 'pending' : report.variableSizes.length === 0 ? 'none' : report.variableSizes.join(', ')],
+      ],
+    }),
+    createContextCard({
+      title: 'Drilldown focus',
+      badge: focusState.size === null && focusState.fontFamily === null ? 'inactive' : 'active',
+      rows: [
+        ['size', focusState.size === null ? 'all sizes' : `${focusState.size}px`],
+        ['font', focusState.fontFamily === null ? 'all fonts' : compactFontLabel(focusState.fontFamily)],
+        ['scope', describeEmojiFocusScope()],
       ],
     }),
     createAssetBridgeCard(),
@@ -1003,6 +1016,7 @@ function buildScenarioCardDefinitions() {
       label: 'Root path',
       href: `${rootPath}${query}`,
       mode: matchedPresetKey ?? 'manual',
+      focus: formatEmojiFocusLabel(),
       route: 'direct',
       path: rootPath,
     },
@@ -1010,6 +1024,7 @@ function buildScenarioCardDefinitions() {
       label: 'Demo alias',
       href: `${demoPath}${query}`,
       mode: matchedPresetKey ?? 'manual',
+      focus: formatEmojiFocusLabel(),
       route: 'redirect',
       path: demoPath,
     },
@@ -1017,6 +1032,7 @@ function buildScenarioCardDefinitions() {
       label: 'Report run',
       href: `${demoPath}${appendReportQuery(query)}`,
       mode: matchedPresetKey ?? 'manual',
+      focus: formatEmojiFocusLabel(),
       route: 'checker',
       path: `${demoPath}?report=1`,
     },
@@ -1124,6 +1140,7 @@ function createScenarioCard(definition) {
   element.append(
     title,
     createRouteCardRow('mode', definition.mode),
+    createRouteCardRow('focus', definition.focus),
     createRouteCardRow('route', definition.route),
     createRouteCardRow('path', definition.path),
   );
@@ -1154,6 +1171,7 @@ function formatSummary(report) {
     report.presetKey === undefined ? null : `preset ${report.presetKey}`,
     `threshold ${report.thresholdPx.toFixed(2)}px`,
     `sizes ${report.sizes.join(', ')}`,
+    `focus ${formatEmojiFocusLabel(report.focus)}`,
     `emoji ${report.emojiCount}  fonts ${report.fontCount}  mismatch-observations ${report.totalMismatchObservations}`,
     report.constantAcrossAllSizes
       ? 'all sampled sizes stay font-constant'
@@ -1220,6 +1238,20 @@ function renderDetailPanel(report) {
   grid.append(...buildDetailCards(report));
 
   detailPanelNode.replaceChildren(head, grid);
+}
+
+function formatEmojiFocusLabel(focus = focusState) {
+  const parts = [];
+  if (focus.size !== null) parts.push(`${focus.size}px`);
+  if (focus.fontFamily !== null) parts.push(compactFontLabel(focus.fontFamily));
+  return parts.length === 0 ? 'all sizes x fonts' : parts.join(' x ');
+}
+
+function describeEmojiFocusScope() {
+  if (focusState.size !== null && focusState.fontFamily !== null) return 'single size x font';
+  if (focusState.size !== null) return 'size drilldown';
+  if (focusState.fontFamily !== null) return 'font drilldown';
+  return 'matrix overview';
 }
 
 function buildDetailTitle() {

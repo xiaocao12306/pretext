@@ -41,6 +41,7 @@ type JustificationReport = {
   status: 'ready' | 'error'
   requestId?: string
   presetKey?: string
+  focusColumn?: 'css' | 'hyphen' | 'optimal' | null
   environment?: EnvironmentFingerprint
   controls?: {
     colWidth: number
@@ -82,6 +83,7 @@ type JustificationRun = {
   width: number
   showIndicators: boolean
   presetKey?: JustificationProbePreset['key']
+  focusColumn: 'css' | 'hyphen' | 'optimal' | null
 }
 
 function parseStringFlag(name: string): string | null {
@@ -141,10 +143,16 @@ function parsePresetKeys(raw: string | null): JustificationProbePreset[] {
     })
 }
 
+function parseFocusColumn(raw: string | null): 'css' | 'hyphen' | 'optimal' | null {
+  if (raw === 'css' || raw === 'hyphen' || raw === 'optimal') return raw
+  return null
+}
+
 function buildRuns(
   presets: JustificationProbePreset[],
   widths: number[],
   showIndicators: boolean[],
+  focusColumn: 'css' | 'hyphen' | 'optimal' | null,
 ): JustificationRun[] {
   if (presets.length > 0) {
     return presets.map(preset => ({
@@ -152,6 +160,7 @@ function buildRuns(
       width: preset.width,
       showIndicators: preset.showIndicators,
       presetKey: preset.key,
+      focusColumn,
     }))
   }
 
@@ -164,6 +173,7 @@ function buildRuns(
         label: `${width}px ${indicatorMode ? 'indicators-on' : 'indicators-off'}`,
         width,
         showIndicators: indicatorMode,
+        focusColumn,
       })
     }
   }
@@ -172,8 +182,8 @@ function buildRuns(
 
 function formatRunLabel(run: JustificationRun): string {
   return run.presetKey === undefined
-    ? run.label
-    : `${run.presetKey} (${run.width}px, ${run.showIndicators ? 'indicators-on' : 'indicators-off'})`
+    ? `${run.label}${run.focusColumn === null ? '' : ` @ ${run.focusColumn}`}`
+    : `${run.presetKey} (${run.width}px, ${run.showIndicators ? 'indicators-on' : 'indicators-off'}${run.focusColumn === null ? '' : ` @ ${run.focusColumn}`})`
 }
 
 function printReport(report: JustificationReport): void {
@@ -193,6 +203,7 @@ function printReport(report: JustificationReport): void {
   console.log(
     `preset ${report.presetKey ?? 'manual'} | ` +
     `${controls.colWidth}px | indicators ${controls.showIndicators ? 'on' : 'off'} | ` +
+    `focus ${report.focusColumn ?? 'all-columns'} | ` +
     `css ${formatColumn(columns.css)} | ` +
     `hyphen ${formatColumn(columns.hyphen)} | ` +
     `optimal ${formatColumn(columns.optimal)}`,
@@ -225,6 +236,18 @@ function validatePresetReport(report: JustificationReport, expectedPresetKey: Ju
   if (report.status === 'error') return false
   if (report.presetKey === expectedPresetKey) return true
   console.log(`protocol error: expected presetKey ${expectedPresetKey}, received ${report.presetKey ?? 'none'}`)
+  return false
+}
+
+function validateFocusColumn(
+  report: JustificationReport,
+  expectedFocusColumn: 'css' | 'hyphen' | 'optimal' | null,
+): boolean {
+  if (report.status === 'error') return false
+  if ((report.focusColumn ?? null) === expectedFocusColumn) return true
+  console.log(
+    `protocol error: expected focusColumn ${expectedFocusColumn ?? 'all-columns'}, received ${report.focusColumn ?? 'all-columns'}`,
+  )
   return false
 }
 
@@ -290,7 +313,8 @@ const browser = parseBrowser(parseStringFlag('browser'))
 const widths = parseWidths(parseStringFlag('widths'))
 const showIndicators = parseShowIndicatorModes(parseStringFlag('showIndicators'))
 const presets = parsePresetKeys(parseStringFlag('presets'))
-const runs = buildRuns(presets, widths, showIndicators)
+const focusColumn = parseFocusColumn(parseStringFlag('focusColumn'))
+const runs = buildRuns(presets, widths, showIndicators, focusColumn)
 const output = parseStringFlag('output')
 const requestedPortRaw = parseStringFlag('port')
 const requestedPort = requestedPortRaw === null ? null : Number.parseInt(requestedPortRaw, 10)
@@ -314,22 +338,28 @@ try {
         ? `${pageServer.baseUrl}/demos/justification-comparison?report=1` +
           `&width=${run.width}` +
           `&showIndicators=${run.showIndicators ? '1' : '0'}` +
+          (run.focusColumn === null ? '' : `&focusColumn=${encodeURIComponent(run.focusColumn)}`) +
           `&requestId=${encodeURIComponent(requestId)}`
         : `${pageServer.baseUrl}/demos/justification-comparison?report=1` +
           `&preset=${encodeURIComponent(run.presetKey)}` +
+          (run.focusColumn === null ? '' : `&focusColumn=${encodeURIComponent(run.focusColumn)}`) +
           `&requestId=${encodeURIComponent(requestId)}`
     const report = await loadHashReport<JustificationReport>(session, url, requestId, browser, timeoutMs)
     reports.push({ run, report })
 
     if (run.presetKey === undefined) {
       printManualReport(report, run)
-      if (report.status === 'error') {
+      if (report.status === 'error' || !validateFocusColumn(report, run.focusColumn)) {
         process.exitCode = 1
       }
     } else {
       console.log(`[preset:${run.presetKey}]`)
       printReport(report)
-      if (report.status === 'error' || !validatePresetReport(report, run.presetKey)) {
+      if (
+        report.status === 'error' ||
+        !validatePresetReport(report, run.presetKey) ||
+        !validateFocusColumn(report, run.focusColumn)
+      ) {
         process.exitCode = 1
       }
     }

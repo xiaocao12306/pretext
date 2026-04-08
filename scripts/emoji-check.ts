@@ -54,6 +54,10 @@ type EmojiReport = {
   status: 'ready' | 'error'
   requestId?: string
   presetKey?: string
+  focus?: {
+    size: number | null
+    fontFamily: string | null
+  }
   environment?: EnvironmentFingerprint
   emojiCount?: number
   fontCount?: number
@@ -76,6 +80,7 @@ type EmojiSummaryRow = {
   maxVariance: number
   noisyFontCount: number
   hottestFont: string | null
+  focus: string
 }
 
 function parseStringFlag(name: string): string | null {
@@ -90,6 +95,12 @@ function parseBrowser(value: string | null): BrowserKind {
     throw new Error(`Unsupported browser ${browser}; expected chrome or safari`)
   }
   return browser
+}
+
+function parseOptionalPositiveInt(raw: string | null): number | null {
+  if (raw === null || raw.trim() === '') return null
+  const parsed = Number.parseInt(raw, 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
 }
 
 function parsePresetKeys(raw: string | null): EmojiProbePreset[] {
@@ -122,6 +133,7 @@ function printReport(report: EmojiReport): void {
     `threshold ${report.thresholdPx?.toFixed(2) ?? '?'} | ` +
     `sizes ${(report.sizes ?? []).join(',') || '?'}`,
   )
+  console.log(`focus: ${formatEmojiFocus(report.focus)}`)
   if (report.environment !== undefined) {
     const env = report.environment
     console.log(
@@ -188,6 +200,7 @@ function toSummaryRow(entry: { preset: EmojiProbePreset['key']; report: EmojiRep
     maxVariance: variances.length === 0 ? 0 : Math.max(...variances),
     noisyFontCount: noisyFonts.length,
     hottestFont: hottestFont === null ? null : compactFontLabel(hottestFont.fontFamily),
+    focus: formatEmojiFocus(report.focus),
   }
 }
 
@@ -219,7 +232,8 @@ function printMatrixSummary(entries: Array<{ preset: EmojiProbePreset['key']; re
       `  ${row.preset} -> ${row.constantAcrossAllSizes ? 'constant' : 'variable'} | ` +
       `mismatch ${row.totalMismatchObservations} | variable sizes ${row.variableSizeCount} | ` +
       `max variance ${row.maxVariance.toFixed(2)}px | noisy fonts ${row.noisyFontCount}` +
-      (row.hottestFont === null ? '' : ` | hot ${row.hottestFont}`),
+      (row.hottestFont === null ? '' : ` | hot ${row.hottestFont}`) +
+      ` | focus ${row.focus}`,
     )
   }
 }
@@ -227,6 +241,30 @@ function printMatrixSummary(entries: Array<{ preset: EmojiProbePreset['key']; re
 function compactFontLabel(fontFamily: string): string {
   const normalized = fontFamily.replaceAll('"', '')
   return normalized.split(',')[0] ?? normalized
+}
+
+function formatEmojiFocus(
+  focus: { size: number | null; fontFamily: string | null } | undefined,
+): string {
+  const size = focus?.size ?? null
+  const fontFamily = focus?.fontFamily ?? null
+  const parts: string[] = []
+  if (size !== null) parts.push(`${size}px`)
+  if (fontFamily !== null) parts.push(compactFontLabel(fontFamily))
+  return parts.length === 0 ? 'all sizes x fonts' : parts.join(' x ')
+}
+
+function validateFocusReport(
+  report: EmojiReport,
+  expected: { size: number | null; fontFamily: string | null },
+): boolean {
+  if (report.status === 'error') return false
+  const actual = report.focus ?? { size: null, fontFamily: null }
+  const normalizedActualFont = actual.fontFamily === null ? null : compactFontLabel(actual.fontFamily)
+  const normalizedExpectedFont = expected.fontFamily === null ? null : compactFontLabel(expected.fontFamily)
+  if (actual.size === expected.size && normalizedActualFont === normalizedExpectedFont) return true
+  console.log(`protocol error: expected focus ${formatEmojiFocus(expected)}, received ${formatEmojiFocus(actual)}`)
+  return false
 }
 
 const browser = parseBrowser(parseStringFlag('browser'))
@@ -237,6 +275,8 @@ const timeoutMs = Number.parseInt(process.env['EMOJI_CHECK_TIMEOUT_MS'] ?? '6000
 const sizes = parseStringFlag('sizes')
 const threshold = parseStringFlag('threshold')
 const presets = parsePresetKeys(parseStringFlag('presets'))
+const focusSize = parseOptionalPositiveInt(parseStringFlag('focusSize'))
+const focusFont = parseStringFlag('focusFont')
 
 let serverProcess: ChildProcess | null = null
 const lock = await acquireBrowserAutomationLock(browser)
@@ -253,7 +293,9 @@ try {
       `${pageServer.baseUrl}/emoji-test?report=1` +
       `&requestId=${encodeURIComponent(requestId)}` +
       (sizes === null ? '' : `&sizes=${encodeURIComponent(sizes)}`) +
-      (threshold === null ? '' : `&threshold=${encodeURIComponent(threshold)}`)
+      (threshold === null ? '' : `&threshold=${encodeURIComponent(threshold)}`) +
+      (focusSize === null ? '' : `&focusSize=${encodeURIComponent(String(focusSize))}`) +
+      (focusFont === null ? '' : `&focusFont=${encodeURIComponent(focusFont)}`)
     const report = await loadHashReport<EmojiReport>(session, url, requestId, browser, timeoutMs)
     printReport(report)
 
@@ -264,6 +306,8 @@ try {
 
     if (report.status === 'error') {
       process.exitCode = 1
+    } else if (!validateFocusReport(report, { size: focusSize, fontFamily: focusFont })) {
+      process.exitCode = 1
     }
   } else {
     const reports: Array<{ preset: EmojiProbePreset['key']; report: EmojiReport }> = []
@@ -273,12 +317,18 @@ try {
       const url =
         `${pageServer.baseUrl}/emoji-test?report=1` +
         `&requestId=${encodeURIComponent(requestId)}` +
-        `&preset=${encodeURIComponent(preset.key)}`
+        `&preset=${encodeURIComponent(preset.key)}` +
+        (focusSize === null ? '' : `&focusSize=${encodeURIComponent(String(focusSize))}`) +
+        (focusFont === null ? '' : `&focusFont=${encodeURIComponent(focusFont)}`)
       const report = await loadHashReport<EmojiReport>(session, url, requestId, browser, timeoutMs)
       console.log(`[preset:${preset.key}]`)
       printReport(report)
       reports.push({ preset: preset.key, report })
-      if (report.status === 'error' || !validatePresetReport(report, preset.key)) {
+      if (
+        report.status === 'error' ||
+        !validatePresetReport(report, preset.key) ||
+        !validateFocusReport(report, { size: focusSize, fontFamily: focusFont })
+      ) {
         process.exitCode = 1
       }
     }

@@ -49,6 +49,7 @@ type JustificationReport = {
   status: 'ready' | 'error'
   requestId?: string
   presetKey?: string
+  focusColumn?: ColumnKey | null
   environment: EnvironmentFingerprint
   controls: DemoControls
   normalSpaceWidth: number
@@ -264,6 +265,7 @@ function buildReport(
   return {
     status: 'ready',
     presetKey: matchedPreset?.key,
+    focusColumn: focusedColumn,
     environment: getEnvironmentFingerprint(),
     controls: frame.controls,
     normalSpaceWidth: Number(normalSpaceWidth.toFixed(3)),
@@ -319,6 +321,7 @@ function formatSummary(report: JustificationReport): string {
   const controls = report.controls
   return [
     `preset ${report.presetKey ?? 'manual'}  width ${controls.colWidth}px  indicators ${controls.showIndicators ? 'on' : 'off'}`,
+    `focus ${formatColumnFocus(report.focusColumn)}`,
     `best avg/max/river ${report.bestColumns.avgDeviation} / ${report.bestColumns.maxDeviation} / ${report.bestColumns.riverCount}`,
     `css lines ${report.columns.css.lineCount} rivers ${report.cssOverlayRiverCount}  hyphen lines ${report.columns.hyphen.lineCount}  optimal lines ${report.columns.optimal.lineCount}`,
     `Δhyphen-css avg ${formatSignedPercent(report.comparisons.hyphenVsCss.avgDeviationDelta)} max ${formatSignedPercent(report.comparisons.hyphenVsCss.maxDeviationDelta)} rivers ${formatSignedInt(report.comparisons.hyphenVsCss.riverCountDelta)}`,
@@ -711,6 +714,15 @@ function renderContextCards(controls: DemoControls): void {
         ['optimal', 'knuth-plass'],
       ],
     }),
+    createContextCard({
+      title: 'Drilldown focus',
+      badge: focusedColumn === null ? 'inactive' : 'active',
+      rows: [
+        ['column', formatColumnFocus(focusedColumn)],
+        ['scope', focusedColumn === null ? 'full comparison' : 'single-column drilldown'],
+        ['handoff', 'route cards + report'],
+      ],
+    }),
     createAssetBridgeCard(),
   ]
 
@@ -745,6 +757,7 @@ function buildScenarioCardDefinitions(controls: DemoControls): Array<{
   label: string
   href: string
   mode: string
+  focus: string
   route: string
   path: string
 }> {
@@ -757,6 +770,7 @@ function buildScenarioCardDefinitions(controls: DemoControls): Array<{
       label: 'Demo path',
       href: `${demoPath}${query}`,
       mode: matchedPreset?.key ?? 'manual',
+      focus: formatColumnFocus(focusedColumn),
       route: 'interactive',
       path: demoPath,
     },
@@ -764,6 +778,7 @@ function buildScenarioCardDefinitions(controls: DemoControls): Array<{
       label: 'Root alias',
       href: `${rootPath}${query}`,
       mode: matchedPreset?.key ?? 'manual',
+      focus: formatColumnFocus(focusedColumn),
       route: 'redirect',
       path: rootPath,
     },
@@ -771,6 +786,7 @@ function buildScenarioCardDefinitions(controls: DemoControls): Array<{
       label: 'Report run',
       href: `${demoPath}${appendReportQuery(query)}`,
       mode: matchedPreset?.key ?? 'manual',
+      focus: formatColumnFocus(focusedColumn),
       route: 'checker',
       path: `${demoPath}?report=1`,
     },
@@ -819,6 +835,7 @@ function createScenarioCard(definition: {
   label: string
   href: string
   mode: string
+  focus: string
   route: string
   path: string
 }): HTMLAnchorElement {
@@ -833,6 +850,7 @@ function createScenarioCard(definition: {
   element.append(
     title,
     createRouteCardRow('mode', definition.mode),
+    createRouteCardRow('focus', definition.focus),
     createRouteCardRow('route', definition.route),
     createRouteCardRow('path', definition.path),
   )
@@ -1036,4 +1054,8 @@ function getEnvironmentFingerprint(): EnvironmentFingerprint {
       pixelDepth: window.screen.pixelDepth,
     },
   }
+}
+
+function formatColumnFocus(column: ColumnKey | null | undefined): string {
+  return column === null || column === undefined ? 'all columns' : getColumnLabel(column)
 }
