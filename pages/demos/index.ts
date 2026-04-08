@@ -1,4 +1,5 @@
 import {
+  ACCORDION_PROBE_PRESETS,
   BUBBLE_PROBE_PRESETS,
   DYNAMIC_LAYOUT_PROBE_PRESETS,
   EDITORIAL_ENGINE_PROBE_PRESETS,
@@ -18,6 +19,19 @@ type ActionDefinition = {
 mountAssetPreview('dynamicLayoutAssets', [
   { label: 'OpenAI', src: resolveImportedAssetUrl(openaiLogoUrl) },
   { label: 'Claude', src: resolveImportedAssetUrl(claudeLogoUrl) },
+])
+
+mountActions('accordionActions', [
+  {
+    label: 'Live demo',
+    href: '../accordion',
+    meta: 'predicted panel heights • route cards • open-state presets',
+  },
+  ...ACCORDION_PROBE_PRESETS.map(preset => ({
+    label: preset.label,
+    href: buildHref('../accordion', { preset: preset.key }),
+    meta: `${preset.pageWidth}px page • open ${preset.openItemId}`,
+  })),
 ])
 
 mountActions('bubbleActions', [

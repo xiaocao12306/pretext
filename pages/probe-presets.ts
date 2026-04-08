@@ -14,6 +14,11 @@ export type RichNoteProbePresetKey =
   | 'default-516'
   | 'wide-680'
 
+export type AccordionProbePresetKey =
+  | 'shipping-780'
+  | 'research-780'
+  | 'mixed-520'
+
 export type BubbleProbePreset = {
   key: BubbleProbePresetKey
   label: string
@@ -26,6 +31,13 @@ export type RichNoteProbePreset = {
   bodyWidth: number
 }
 
+export type AccordionProbePreset = {
+  key: AccordionProbePresetKey
+  label: string
+  pageWidth: number
+  openItemId: string
+}
+
 export const BUBBLE_PROBE_PRESETS: BubbleProbePreset[] = [
   { key: 'narrow-260', label: 'Narrow 260', chatWidth: 260 },
   { key: 'default-340', label: 'Default 340', chatWidth: 340 },
@@ -36,6 +48,12 @@ export const RICH_NOTE_PROBE_PRESETS: RichNoteProbePreset[] = [
   { key: 'narrow-320', label: 'Narrow 320', bodyWidth: 320 },
   { key: 'default-516', label: 'Default 516', bodyWidth: 516 },
   { key: 'wide-680', label: 'Wide 680', bodyWidth: 680 },
+]
+
+export const ACCORDION_PROBE_PRESETS: AccordionProbePreset[] = [
+  { key: 'shipping-780', label: 'Shipping 780', pageWidth: 780, openItemId: 'shipping' },
+  { key: 'research-780', label: 'Research 780', pageWidth: 780, openItemId: 'research' },
+  { key: 'mixed-520', label: 'Mixed 520', pageWidth: 520, openItemId: 'mixed' },
 ]
 
 export type JustificationProbePreset = {
@@ -130,6 +148,10 @@ export function findBubbleProbePreset(key: string): BubbleProbePreset | null {
 
 export function findRichNoteProbePreset(key: string): RichNoteProbePreset | null {
   return RICH_NOTE_PROBE_PRESETS.find(preset => preset.key === key) ?? null
+}
+
+export function findAccordionProbePreset(key: string): AccordionProbePreset | null {
+  return ACCORDION_PROBE_PRESETS.find(preset => preset.key === key) ?? null
 }
 
 export function findEmojiProbePreset(key: string): EmojiProbePreset | null {
