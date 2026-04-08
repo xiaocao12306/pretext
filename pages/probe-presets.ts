@@ -9,16 +9,33 @@ export type BubbleProbePresetKey =
   | 'default-340'
   | 'wide-460'
 
+export type RichNoteProbePresetKey =
+  | 'narrow-320'
+  | 'default-516'
+  | 'wide-680'
+
 export type BubbleProbePreset = {
   key: BubbleProbePresetKey
   label: string
   chatWidth: number
 }
 
+export type RichNoteProbePreset = {
+  key: RichNoteProbePresetKey
+  label: string
+  bodyWidth: number
+}
+
 export const BUBBLE_PROBE_PRESETS: BubbleProbePreset[] = [
   { key: 'narrow-260', label: 'Narrow 260', chatWidth: 260 },
   { key: 'default-340', label: 'Default 340', chatWidth: 340 },
   { key: 'wide-460', label: 'Wide 460', chatWidth: 460 },
+]
+
+export const RICH_NOTE_PROBE_PRESETS: RichNoteProbePreset[] = [
+  { key: 'narrow-320', label: 'Narrow 320', bodyWidth: 320 },
+  { key: 'default-516', label: 'Default 516', bodyWidth: 516 },
+  { key: 'wide-680', label: 'Wide 680', bodyWidth: 680 },
 ]
 
 export type JustificationProbePreset = {
@@ -109,6 +126,10 @@ export function findJustificationProbePreset(key: string): JustificationProbePre
 
 export function findBubbleProbePreset(key: string): BubbleProbePreset | null {
   return BUBBLE_PROBE_PRESETS.find(preset => preset.key === key) ?? null
+}
+
+export function findRichNoteProbePreset(key: string): RichNoteProbePreset | null {
+  return RICH_NOTE_PROBE_PRESETS.find(preset => preset.key === key) ?? null
 }
 
 export function findEmojiProbePreset(key: string): EmojiProbePreset | null {

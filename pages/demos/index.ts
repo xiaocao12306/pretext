@@ -4,6 +4,7 @@ import {
   EDITORIAL_ENGINE_PROBE_PRESETS,
   EMOJI_PROBE_PRESETS,
   JUSTIFICATION_PROBE_PRESETS,
+  RICH_NOTE_PROBE_PRESETS,
 } from '../probe-presets.ts'
 import openaiLogoUrl from '../assets/openai-symbol.svg'
 import claudeLogoUrl from '../assets/claude-symbol.svg'
@@ -29,6 +30,19 @@ mountActions('bubbleActions', [
     label: preset.label,
     href: buildHref('../bubbles', { preset: preset.key }),
     meta: `${preset.chatWidth}px chat • ${Math.floor(preset.chatWidth * 0.8)}px bubble max`,
+  })),
+])
+
+mountActions('richNoteActions', [
+  {
+    label: 'Live demo',
+    href: '../rich-note',
+    meta: 'inline-flow chips • route cards • width presets',
+  },
+  ...RICH_NOTE_PROBE_PRESETS.map(preset => ({
+    label: preset.label,
+    href: buildHref('../rich-note', { preset: preset.key }),
+    meta: `${preset.bodyWidth}px body • ${preset.bodyWidth + 40}px shell`,
   })),
 ])
 
