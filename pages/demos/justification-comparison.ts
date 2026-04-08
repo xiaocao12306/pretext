@@ -83,6 +83,8 @@ type JustificationProbeState = {
   showIndicators: boolean
 }
 
+type ColumnKey = 'css' | 'hyphen' | 'optimal'
+
 const dom = createDomCache()
 const probeRailNode = document.getElementById('probeRail')
 if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found')
@@ -96,6 +98,8 @@ const summaryPanelNode = document.getElementById('summaryPanel')
 if (!(summaryPanelNode instanceof HTMLElement)) throw new Error('#summaryPanel not found')
 const comparisonGridNode = document.getElementById('comparisonGrid')
 if (!(comparisonGridNode instanceof HTMLElement)) throw new Error('#comparisonGrid not found')
+const detailPanelNode = document.getElementById('detailPanel')
+if (!(detailPanelNode instanceof HTMLElement)) throw new Error('#detailPanel not found')
 const RELATED_ASSETS = [
   {
     label: 'OpenAI',
@@ -136,9 +140,11 @@ const state: State = {
 let scheduledRaf: number | null = null
 let cssOverlayRequestId = 0
 let latestFrame: DemoFrame | null = null
+let latestReport: JustificationReport | null = null
 let reportPublished = false
 let resources: ReturnType<typeof createDemoResources> | null = null
 let latestCssOverlaySummary: CssOverlaySummary = { riverMarkCount: 0 }
+let focusedColumn: ColumnKey | null = null
 
 if (reportRequested) {
   clearNavigationReport()
@@ -156,6 +162,16 @@ dom.showIndicators.addEventListener('input', () => {
 })
 
 window.addEventListener('resize', scheduleRender)
+
+dom.columns.forEach((column, index) => {
+  const key = index === 0 ? 'css' : index === 1 ? 'hyphen' : 'optimal'
+  column.addEventListener('click', () => {
+    focusedColumn = focusedColumn === key ? null : key
+    if (latestReport !== null) renderComparisonGrid(latestReport)
+    syncColumnSelection()
+    renderDetailPanel(latestReport)
+  })
+})
 
 await document.fonts.ready
 
@@ -279,8 +295,11 @@ function toColumnMetrics(metrics: QualityMetrics, totalHeight: number): ColumnMe
 }
 
 function syncSummaryPanel(report: JustificationReport): void {
+  latestReport = report
   summaryPanelNode.textContent = formatSummary(report)
   renderComparisonGrid(report)
+  renderDetailPanel(report)
+  syncColumnSelection()
 }
 
 function buildMetricsDelta(
@@ -316,14 +335,14 @@ function formatSignedInt(value: number): string {
 
 function renderComparisonGrid(report: JustificationReport): void {
   const cards = [
-    createComparisonCard('CSS', report.columns.css, report, {
+    createComparisonCard('css', 'CSS', report.columns.css, report, {
       avgBest: report.bestColumns.avgDeviation === 'css',
       maxBest: report.bestColumns.maxDeviation === 'css',
       riverBest: report.bestColumns.riverCount === 'css',
       deltaLabel: 'baseline',
       deltaValue: 'native',
     }),
-    createComparisonCard('Hyphen', report.columns.hyphen, report, {
+    createComparisonCard('hyphen', 'Hyphen', report.columns.hyphen, report, {
       avgBest: report.bestColumns.avgDeviation === 'hyphen',
       maxBest: report.bestColumns.maxDeviation === 'hyphen',
       riverBest: report.bestColumns.riverCount === 'hyphen',
@@ -333,7 +352,7 @@ function renderComparisonGrid(report: JustificationReport): void {
         `max ${formatSignedPercent(report.comparisons.hyphenVsCss.maxDeviationDelta)} ` +
         `r ${formatSignedInt(report.comparisons.hyphenVsCss.riverCountDelta)}`,
     }),
-    createComparisonCard('Optimal', report.columns.optimal, report, {
+    createComparisonCard('optimal', 'Optimal', report.columns.optimal, report, {
       avgBest: report.bestColumns.avgDeviation === 'optimal',
       maxBest: report.bestColumns.maxDeviation === 'optimal',
       riverBest: report.bestColumns.riverCount === 'optimal',
@@ -349,6 +368,7 @@ function renderComparisonGrid(report: JustificationReport): void {
 }
 
 function createComparisonCard(
+  columnKey: ColumnKey,
   label: string,
   column: ColumnMetricsReport,
   report: JustificationReport,
@@ -362,6 +382,15 @@ function createComparisonCard(
 ): HTMLElement {
   const card = document.createElement('article')
   card.className = options.avgBest || options.maxBest || options.riverBest ? 'summary-card is-best' : 'summary-card'
+  if (focusedColumn === columnKey) card.className += ' is-selected'
+  card.tabIndex = 0
+  card.role = 'button'
+  card.addEventListener('click', () => {
+    focusedColumn = focusedColumn === columnKey ? null : columnKey
+    renderComparisonGrid(report)
+    renderDetailPanel(report)
+    syncColumnSelection()
+  })
 
   const titleRow = document.createElement('div')
   titleRow.className = 'summary-card-title'
@@ -407,6 +436,193 @@ function createComparisonRow(label: string, value: string): HTMLElement {
   valueNode.textContent = value
   row.append(labelNode, valueNode)
   return row
+}
+
+function renderDetailPanel(report: JustificationReport | null): void {
+  if (report === null || focusedColumn === null) {
+    detailPanelNode.hidden = true
+    detailPanelNode.replaceChildren()
+    return
+  }
+
+  detailPanelNode.hidden = false
+
+  const head = document.createElement('div')
+  head.className = 'detail-panel-head'
+  const title = document.createElement('div')
+  title.className = 'detail-panel-title'
+  title.textContent = `${getColumnLabel(focusedColumn)} drilldown`
+  const reset = document.createElement('button')
+  reset.type = 'button'
+  reset.className = 'detail-panel-reset'
+  reset.textContent = 'Clear focus'
+  reset.addEventListener('click', () => {
+    focusedColumn = null
+    renderComparisonGrid(report)
+    renderDetailPanel(report)
+    syncColumnSelection()
+  })
+  head.append(title, reset)
+
+  const grid = document.createElement('div')
+  grid.className = 'detail-grid'
+  grid.append(
+    createDetailCard({
+      title: getColumnLabel(focusedColumn),
+      badge: 'focus',
+      focused: true,
+      rows: getFocusRows(report, focusedColumn),
+    }),
+    ...getComparisonCards(report, focusedColumn),
+  )
+
+  detailPanelNode.replaceChildren(head, grid)
+}
+
+function getFocusRows(report: JustificationReport, focus: ColumnKey): Array<[string, string]> {
+  const column = report.columns[focus]
+  const riverCount = focus === 'css' ? report.cssOverlayRiverCount : column.riverCount
+  return [
+    ['lines', String(column.lineCount)],
+    ['avg dev', `${(column.avgDeviation * 100).toFixed(1)}%`],
+    ['max dev', `${(column.maxDeviation * 100).toFixed(1)}%`],
+    ['rivers', String(riverCount)],
+    ['height', `${column.totalHeight.toFixed(1)}px`],
+  ]
+}
+
+function getComparisonCards(report: JustificationReport, focus: ColumnKey): HTMLElement[] {
+  if (focus === 'css') {
+    return [
+      createDetailCard({
+        title: 'Hyphen vs CSS',
+        badge: report.bestColumns.avgDeviation === 'hyphen' ? 'best avg' : null,
+        focused: false,
+        rows: [
+          ['avg Δ', formatSignedPercent(report.comparisons.hyphenVsCss.avgDeviationDelta)],
+          ['max Δ', formatSignedPercent(report.comparisons.hyphenVsCss.maxDeviationDelta)],
+          ['river Δ', formatSignedInt(report.comparisons.hyphenVsCss.riverCountDelta)],
+          ['line Δ', formatSignedInt(report.comparisons.hyphenVsCss.lineCountDelta)],
+        ],
+      }),
+      createDetailCard({
+        title: 'Optimal vs CSS',
+        badge: report.bestColumns.avgDeviation === 'optimal' ? 'best avg' : null,
+        focused: false,
+        rows: [
+          ['avg Δ', formatSignedPercent(report.comparisons.optimalVsCss.avgDeviationDelta)],
+          ['max Δ', formatSignedPercent(report.comparisons.optimalVsCss.maxDeviationDelta)],
+          ['river Δ', formatSignedInt(report.comparisons.optimalVsCss.riverCountDelta)],
+          ['line Δ', formatSignedInt(report.comparisons.optimalVsCss.lineCountDelta)],
+        ],
+      }),
+    ]
+  }
+
+  if (focus === 'hyphen') {
+    return [
+      createDetailCard({
+        title: 'Vs CSS',
+        badge: null,
+        focused: false,
+        rows: [
+          ['avg Δ', formatSignedPercent(report.comparisons.hyphenVsCss.avgDeviationDelta)],
+          ['max Δ', formatSignedPercent(report.comparisons.hyphenVsCss.maxDeviationDelta)],
+          ['river Δ', formatSignedInt(report.comparisons.hyphenVsCss.riverCountDelta)],
+          ['line Δ', formatSignedInt(report.comparisons.hyphenVsCss.lineCountDelta)],
+        ],
+      }),
+      createDetailCard({
+        title: 'Optimal vs Hyphen',
+        badge: null,
+        focused: false,
+        rows: [
+          ['avg Δ', formatSignedPercent(report.comparisons.optimalVsHyphen.avgDeviationDelta)],
+          ['max Δ', formatSignedPercent(report.comparisons.optimalVsHyphen.maxDeviationDelta)],
+          ['river Δ', formatSignedInt(report.comparisons.optimalVsHyphen.riverCountDelta)],
+          ['line Δ', formatSignedInt(report.comparisons.optimalVsHyphen.lineCountDelta)],
+        ],
+      }),
+    ]
+  }
+
+  return [
+    createDetailCard({
+      title: 'Vs CSS',
+      badge: null,
+      focused: false,
+      rows: [
+        ['avg Δ', formatSignedPercent(report.comparisons.optimalVsCss.avgDeviationDelta)],
+        ['max Δ', formatSignedPercent(report.comparisons.optimalVsCss.maxDeviationDelta)],
+        ['river Δ', formatSignedInt(report.comparisons.optimalVsCss.riverCountDelta)],
+        ['line Δ', formatSignedInt(report.comparisons.optimalVsCss.lineCountDelta)],
+      ],
+    }),
+    createDetailCard({
+      title: 'Vs Hyphen',
+      badge: null,
+      focused: false,
+      rows: [
+        ['avg Δ', formatSignedPercent(report.comparisons.optimalVsHyphen.avgDeviationDelta)],
+        ['max Δ', formatSignedPercent(report.comparisons.optimalVsHyphen.maxDeviationDelta)],
+        ['river Δ', formatSignedInt(report.comparisons.optimalVsHyphen.riverCountDelta)],
+        ['line Δ', formatSignedInt(report.comparisons.optimalVsHyphen.lineCountDelta)],
+      ],
+    }),
+  ]
+}
+
+function createDetailCard(definition: {
+  title: string
+  badge: string | null
+  focused: boolean
+  rows: Array<[string, string]>
+}): HTMLElement {
+  const card = document.createElement('article')
+  card.className = definition.focused ? 'detail-card is-focus' : 'detail-card'
+
+  const titleRow = document.createElement('div')
+  titleRow.className = 'detail-card-title'
+  const title = document.createElement('span')
+  title.textContent = definition.title
+  titleRow.append(title)
+  if (definition.badge !== null) {
+    const badge = document.createElement('span')
+    badge.className = 'detail-card-badge'
+    badge.textContent = definition.badge
+    titleRow.append(badge)
+  }
+
+  card.append(titleRow, ...definition.rows.map(([label, value]) => createDetailRow(label, value)))
+  return card
+}
+
+function createDetailRow(label: string, value: string): HTMLElement {
+  const row = document.createElement('div')
+  row.className = 'detail-card-row'
+  const labelNode = document.createElement('span')
+  labelNode.className = 'detail-card-label'
+  labelNode.textContent = label
+  const valueNode = document.createElement('span')
+  valueNode.className = 'detail-card-value'
+  valueNode.textContent = value
+  row.append(labelNode, valueNode)
+  return row
+}
+
+function getColumnLabel(column: ColumnKey): string {
+  if (column === 'css') return 'CSS'
+  if (column === 'hyphen') return 'Hyphen'
+  return 'Optimal'
+}
+
+function syncColumnSelection(): void {
+  for (let index = 0; index < dom.columns.length; index++) {
+    const column = dom.columns[index]!
+    const key = index === 0 ? 'css' : index === 1 ? 'hyphen' : 'optimal'
+    column.classList.toggle('is-selected', focusedColumn === key)
+    column.classList.toggle('is-dimmed', focusedColumn !== null && focusedColumn !== key)
+  }
 }
 
 function pickBestColumn(

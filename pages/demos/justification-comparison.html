@@ -260,16 +260,120 @@
       margin: 0 auto 20px;
       max-width: 980px;
     }
-    .summary-card {
+    .detail-panel {
+      margin: 0 auto 20px;
+      max-width: 980px;
       padding: 12px 14px;
       border: 1px solid #ddd4c8;
       border-radius: 12px;
       background: #f5f2ed;
       color: #5f5447;
     }
+    .detail-panel[hidden] {
+      display: none;
+    }
+    .detail-panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 10px;
+    }
+    .detail-panel-title {
+      font: 700 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #473b2d;
+    }
+    .detail-panel-reset {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border: 1px solid #ddd4c8;
+      border-radius: 999px;
+      background: #fffaf4;
+      color: #6d563d;
+      cursor: pointer;
+      font: 700 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .detail-panel-reset:hover {
+      border-color: #bcae9a;
+      background: #f1ece5;
+      color: #473b2d;
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .detail-card {
+      padding: 12px 14px;
+      border: 1px solid #ddd4c8;
+      border-radius: 12px;
+      background: #fffaf4;
+      color: #5f5447;
+    }
+    .detail-card.is-focus {
+      border-color: #9e876c;
+      background: #ece2d5;
+    }
+    .detail-card-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 0 0 8px;
+      font: 700 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #473b2d;
+    }
+    .detail-card-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(158, 135, 108, 0.14);
+      color: #6d563d;
+      font: 700 10px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .detail-card-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font: 400 12px/1.45 "SF Mono", ui-monospace, monospace;
+      color: #6a6055;
+    }
+    .detail-card-row + .detail-card-row {
+      margin-top: 2px;
+    }
+    .detail-card-label {
+      color: #8a7f70;
+    }
+    .detail-card-value {
+      color: #4f4436;
+      text-align: right;
+    }
+    .summary-card {
+      padding: 12px 14px;
+      border: 1px solid #ddd4c8;
+      border-radius: 12px;
+      background: #f5f2ed;
+      color: #5f5447;
+      cursor: pointer;
+    }
     .summary-card.is-best {
       border-color: #9e876c;
       background: #ece2d5;
+    }
+    .summary-card.is-selected {
+      box-shadow: inset 0 0 0 1px rgba(158, 135, 108, 0.3);
     }
     .summary-card-title {
       display: flex;
@@ -341,6 +445,18 @@
     }
     .column {
       flex: 0 0 auto; min-width: 200px;
+      cursor: pointer;
+      transition: opacity 140ms ease;
+    }
+    .column.is-dimmed {
+      opacity: 0.62;
+    }
+    .column.is-selected .col-header {
+      color: #473b2d;
+    }
+    .column.is-selected .col-canvas-wrap,
+    .column.is-selected .css-col {
+      box-shadow: 0 0 0 2px rgba(158, 135, 108, 0.24);
     }
     .col-header {
       font: 600 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -423,6 +539,7 @@
     <section id="routeCardGrid" class="route-card-grid" aria-label="Justification scenario links"></section>
     <pre id="summaryPanel" class="summary-panel" aria-live="polite"></pre>
     <section id="comparisonGrid" class="summary-grid" aria-label="Justification comparison cards"></section>
+    <section id="detailPanel" class="detail-panel" aria-live="polite" hidden></section>
 
     <div class="controls">
       <label for="widthSlider">Column width</label>
