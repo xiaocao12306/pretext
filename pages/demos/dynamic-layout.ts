@@ -261,6 +261,8 @@ const telemetryNode = document.getElementById('telemetryPanel')
 if (!(telemetryNode instanceof HTMLElement)) throw new Error('#telemetryPanel not found')
 const assetCardGridNode = document.getElementById('assetCardGrid')
 if (!(assetCardGridNode instanceof HTMLElement)) throw new Error('#assetCardGrid not found')
+const routeCardGridNode = document.getElementById('routeCardGrid')
+if (!(routeCardGridNode instanceof HTMLElement)) throw new Error('#routeCardGrid not found')
 const summaryPanelNode = document.getElementById('summaryPanel')
 if (!(summaryPanelNode instanceof HTMLElement)) throw new Error('#summaryPanel not found')
 const presetCardGridNode = document.getElementById('presetCardGrid')
@@ -272,6 +274,7 @@ type DomCache = {
   hint: HTMLParagraphElement // cache lifetime: page
   telemetry: HTMLElement // cache lifetime: page
   assetCards: HTMLElement // cache lifetime: page
+  routeCards: HTMLElement // cache lifetime: page
   summary: HTMLElement // cache lifetime: page
   presetCards: HTMLElement // cache lifetime: page
   probeRail: HTMLElement // cache lifetime: page
@@ -322,6 +325,7 @@ const domCache: DomCache = {
   hint: hintNode,
   telemetry: telemetryNode,
   assetCards: assetCardGridNode,
+  routeCards: routeCardGridNode,
   summary: summaryPanelNode,
   presetCards: presetCardGridNode,
   probeRail: probeRailNode,
@@ -1072,6 +1076,7 @@ function commitFrame(now: number): boolean {
   )
   syncPresetUi()
   syncAssetCards(lastCommittedReport)
+  syncScenarioCards()
   syncSummaryPanel(lastCommittedReport)
   maybePublishReport()
   syncTelemetry(lastCommittedReport)
@@ -1320,6 +1325,11 @@ function syncPresetUi(): void {
   renderPresetCards()
 }
 
+function syncScenarioCards(): void {
+  const cards = buildScenarioCardDefinitions().map(createScenarioCard)
+  domCache.routeCards.replaceChildren(...cards)
+}
+
 function getCurrentDynamicLayoutProbeState(): DynamicLayoutProbeState {
   const root = document.documentElement
   return {
@@ -1427,6 +1437,115 @@ function buildProbeHref(options: {
   return query.length === 0 ? location.pathname : `${location.pathname}?${query}`
 }
 
+function buildScenarioCardDefinitions(): Array<{
+  label: string
+  href: string
+  mode: string
+  route: string
+  path: string
+}> {
+  const state = getCurrentDynamicLayoutProbeState()
+  const matchedPreset = findMatchingDynamicLayoutProbePreset(state)
+  const query = buildScenarioQuery(state, matchedPreset)
+  const demoPath = normalizeDynamicLayoutPath(location.pathname, 'demo')
+  const rootPath = normalizeDynamicLayoutPath(location.pathname, 'root')
+  return [
+    {
+      label: 'Demo path',
+      href: `${demoPath}${query}`,
+      mode: matchedPreset?.key ?? 'manual',
+      route: 'interactive',
+      path: demoPath,
+    },
+    {
+      label: 'Root alias',
+      href: `${rootPath}${query}`,
+      mode: matchedPreset?.key ?? 'manual',
+      route: 'redirect',
+      path: rootPath,
+    },
+    {
+      label: 'Report run',
+      href: `${demoPath}${appendReportQuery(query)}`,
+      mode: matchedPreset?.key ?? 'manual',
+      route: 'checker',
+      path: `${demoPath}?report=1`,
+    },
+  ]
+}
+
+function buildScenarioQuery(
+  state: DynamicLayoutProbeState,
+  matchedPreset: DynamicLayoutProbePreset | null,
+): string {
+  const next = new URLSearchParams()
+  if (matchedPreset !== null) {
+    next.set('preset', matchedPreset.key)
+  } else {
+    next.set('pageWidth', String(state.pageWidth))
+    next.set('pageHeight', String(state.pageHeight))
+    if (!isAngleMatch(state.openaiAngle, 0)) next.set('openaiAngle', state.openaiAngle.toFixed(6))
+    if (!isAngleMatch(state.claudeAngle, 0)) next.set('claudeAngle', state.claudeAngle.toFixed(6))
+    next.set('showDiagnostics', state.showDiagnostics ? '1' : '0')
+  }
+  const query = next.toString()
+  return query.length === 0 ? '' : `?${query}`
+}
+
+function appendReportQuery(query: string): string {
+  const next = new URLSearchParams(query.startsWith('?') ? query.slice(1) : query)
+  next.set('report', '1')
+  return `?${next.toString()}`
+}
+
+function normalizeDynamicLayoutPath(pathname: string, target: 'demo' | 'root'): string {
+  if (target === 'demo') {
+    return pathname.includes('/demos/')
+      ? pathname.replace(/\/dynamic-layout\/?$/, '/dynamic-layout')
+      : pathname.replace(/\/dynamic-layout\/?$/, '/demos/dynamic-layout')
+  }
+  return pathname.includes('/demos/')
+    ? pathname.replace(/\/demos\/dynamic-layout\/?$/, '/dynamic-layout')
+    : pathname.replace(/\/dynamic-layout\/?$/, '/dynamic-layout')
+}
+
+function createScenarioCard(definition: {
+  label: string
+  href: string
+  mode: string
+  route: string
+  path: string
+}): HTMLAnchorElement {
+  const element = document.createElement('a')
+  element.className = 'route-card'
+  element.href = definition.href
+
+  const title = document.createElement('div')
+  title.className = 'route-card-title'
+  title.textContent = definition.label
+
+  element.append(
+    title,
+    createRouteCardRow('mode', definition.mode),
+    createRouteCardRow('route', definition.route),
+    createRouteCardRow('path', definition.path),
+  )
+  return element
+}
+
+function createRouteCardRow(label: string, value: string): HTMLElement {
+  const row = document.createElement('div')
+  row.className = 'route-card-row'
+  const labelNode = document.createElement('span')
+  labelNode.className = 'route-card-label'
+  labelNode.textContent = label
+  const valueNode = document.createElement('span')
+  valueNode.className = 'route-card-value'
+  valueNode.textContent = value
+  row.append(labelNode, valueNode)
+  return row
+}
+
 function isAngleMatch(actual: number, expected: number): boolean {
   return Math.abs(actual - expected) < 0.0005
 }
@@ -1484,6 +1603,7 @@ function createAssetCard(
     createAssetRow('origin', `${Math.round(logo.rect.x)}, ${Math.round(logo.rect.y)}`),
     createAssetRow('layout hull', String(logo.layoutHullPoints)),
     createAssetRow('hit hull', String(logo.hitHullPoints)),
+    createAssetSourceLink(label),
   )
   return card
 }
@@ -1499,6 +1619,16 @@ function createAssetRow(label: string, value: string): HTMLElement {
   valueNode.textContent = value
   row.append(labelNode, valueNode)
   return row
+}
+
+function createAssetSourceLink(label: string): HTMLAnchorElement {
+  const link = document.createElement('a')
+  link.className = 'asset-card-source'
+  link.href = label === 'OpenAI' ? OPENAI_LOGO_SRC : CLAUDE_LOGO_SRC
+  link.target = '_blank'
+  link.rel = 'noreferrer'
+  link.textContent = 'source svg'
+  return link
 }
 
 function formatSummaryPanel(report: DynamicLayoutReport): string {

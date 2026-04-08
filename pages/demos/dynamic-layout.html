@@ -141,6 +141,60 @@
         z-index: 6;
       }
 
+      .route-card-grid {
+        position: fixed;
+        right: 18px;
+        bottom: 234px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 10px;
+        width: min(380px, calc(100vw - 36px));
+        z-index: 6;
+      }
+
+      .route-card {
+        display: block;
+        padding: 12px 14px;
+        border-radius: 18px;
+        background: rgba(246, 240, 230, 0.92);
+        border: 1px solid rgba(17, 16, 13, 0.12);
+        box-shadow: 0 18px 42px rgba(17, 16, 13, 0.12);
+        backdrop-filter: blur(10px);
+        color: rgba(17, 16, 13, 0.84);
+        text-decoration: none;
+      }
+
+      .route-card:hover {
+        border-color: rgba(17, 16, 13, 0.22);
+      }
+
+      .route-card-title {
+        margin: 0 0 6px;
+        font: 700 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .route-card-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        font: 500 11px/1.45 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      }
+
+      .route-card-row + .route-card-row {
+        margin-top: 2px;
+      }
+
+      .route-card-label {
+        color: rgba(79, 70, 59, 0.74);
+      }
+
+      .route-card-value {
+        color: rgba(17, 16, 13, 0.9);
+        text-align: right;
+      }
+
       .asset-card {
         padding: 12px 14px;
         border-radius: 18px;
@@ -176,6 +230,26 @@
       .asset-card-value {
         color: rgba(17, 16, 13, 0.9);
         text-align: right;
+      }
+
+      .asset-card-source {
+        display: inline-flex;
+        align-items: center;
+        margin-top: 8px;
+        min-height: 24px;
+        padding: 0 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(17, 16, 13, 0.12);
+        background: rgba(255, 255, 255, 0.44);
+        color: rgba(120, 52, 28, 0.96);
+        text-decoration: none;
+        font: 600 10px/1 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+      }
+
+      .asset-card-source:hover {
+        border-color: rgba(17, 16, 13, 0.22);
       }
 
       .preset-card-grid {
@@ -397,6 +471,13 @@
           grid-template-columns: 1fr;
         }
 
+        .route-card-grid {
+          right: 12px;
+          bottom: 308px;
+          width: min(100vw - 24px, 360px);
+          grid-template-columns: 1fr;
+        }
+
         .preset-card-grid {
           right: 12px;
           bottom: 160px;
@@ -426,6 +507,7 @@
       <p id="hintPill" class="hint-pill">Everything laid out in JS. Resize horizontally and vertically, then click the logos.</p>
       <aside id="telemetryPanel" class="telemetry" hidden></aside>
       <section id="assetCardGrid" class="asset-card-grid" aria-label="Dynamic layout asset cards"></section>
+      <section id="routeCardGrid" class="route-card-grid" aria-label="Dynamic layout scenario links"></section>
       <aside id="summaryPanel" class="summary-panel" aria-live="polite"></aside>
       <section id="presetCardGrid" class="preset-card-grid" aria-label="Dynamic layout preset cards"></section>
       <nav id="probeRail" class="probe-rail" aria-label="Dynamic layout probe presets"></nav>
