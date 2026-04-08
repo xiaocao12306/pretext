@@ -246,6 +246,97 @@
     margin: 0 0 16px;
   }
   .font-summary-grid[hidden] { display: none; }
+  .detail-panel {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border: 1px solid #222;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(18, 18, 18, 0.98), rgba(12, 12, 12, 0.96));
+    color: #d5d5d5;
+  }
+  .detail-panel[hidden] { display: none; }
+  .detail-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 0 10px;
+  }
+  .detail-panel-title {
+    font: 700 13px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #fff;
+  }
+  .detail-panel-reset {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border: 1px solid #242424;
+    border-radius: 999px;
+    background: #111;
+    color: #d5d5d5;
+    font: 600 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+  }
+  .detail-panel-reset:hover {
+    border-color: #3a3a3a;
+    color: #fff;
+  }
+  .detail-panel-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+  }
+  .detail-card {
+    padding: 12px 14px;
+    border: 1px solid #222;
+    border-radius: 12px;
+    background: rgba(14, 14, 14, 0.86);
+  }
+  .detail-card-title {
+    margin: 0 0 8px;
+    color: #fff;
+    font: 700 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .detail-card-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    color: #9c9c9c;
+    font: 12px/1.45 "SF Mono", monospace;
+  }
+  .detail-card-row + .detail-card-row {
+    margin-top: 2px;
+  }
+  .detail-card-label {
+    color: #7d7d7d;
+  }
+  .detail-card-value {
+    color: #d5d5d5;
+    text-align: right;
+  }
+  .detail-chip-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0 0;
+  }
+  .detail-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: rgba(79,195,247,0.12);
+    color: #c7edff;
+    font: 600 12px/1 "SF Mono", monospace;
+  }
   .summary-card {
     padding: 12px 14px;
     border: 1px solid #222;
@@ -253,9 +344,11 @@
     background: linear-gradient(180deg, rgba(18, 18, 18, 0.98), rgba(12, 12, 12, 0.96));
     font: 12px/1.45 "SF Mono", monospace;
     color: #d5d5d5;
+    cursor: pointer;
   }
   .summary-card.is-constant { border-color: rgba(129, 199, 132, 0.32); }
   .summary-card.is-variable { border-color: rgba(239, 83, 80, 0.32); }
+  .summary-card.is-selected { border-color: #4fc3f7; box-shadow: inset 0 0 0 1px rgba(79,195,247,0.3); }
   .summary-card-size {
     display: flex;
     align-items: center;
@@ -294,10 +387,12 @@
     background: linear-gradient(180deg, rgba(18, 18, 18, 0.98), rgba(12, 12, 12, 0.96));
     font: 12px/1.45 "SF Mono", monospace;
     color: #d5d5d5;
+    cursor: pointer;
   }
   .font-card.is-clean { border-color: rgba(129, 199, 132, 0.32); }
   .font-card.is-noisy { border-color: rgba(79,195,247,0.32); }
   .font-card.is-hot { border-color: rgba(239, 83, 80, 0.32); }
+  .font-card.is-selected { box-shadow: inset 0 0 0 1px rgba(79,195,247,0.3); }
   .font-card-title {
     display: flex;
     align-items: center;
@@ -356,6 +451,7 @@
 <div id="summaryPanel" class="panel" hidden></div>
 <section id="sizeSummaryGrid" class="summary-grid" hidden aria-label="Emoji size summary cards"></section>
 <section id="fontSummaryGrid" class="font-summary-grid" hidden aria-label="Emoji font summary cards"></section>
+<section id="detailPanel" class="detail-panel" hidden aria-live="polite"></section>
 <div id="output">Running...</div>
 <script type="module">
 import { clearNavigationReport, publishNavigationPhase, publishNavigationReport } from './report-utils.ts'
@@ -426,6 +522,8 @@ const summaryGridNode = document.getElementById('sizeSummaryGrid');
 if (!(summaryGridNode instanceof HTMLElement)) throw new Error('#sizeSummaryGrid not found');
 const fontSummaryGridNode = document.getElementById('fontSummaryGrid');
 if (!(fontSummaryGridNode instanceof HTMLElement)) throw new Error('#fontSummaryGrid not found');
+const detailPanelNode = document.getElementById('detailPanel');
+if (!(detailPanelNode instanceof HTMLElement)) throw new Error('#detailPanel not found');
 const presetCardGridNode = document.getElementById('presetCardGrid');
 if (!(presetCardGridNode instanceof HTMLElement)) throw new Error('#presetCardGrid not found');
 const contextCardGridNode = document.getElementById('contextCardGrid');
@@ -455,6 +553,11 @@ const diffsBySizeFont = new Map(); // size → Map<font, diff[]>
 const sizeSummaries = [];
 const fontSummaries = [];
 let totalMismatchObservations = 0;
+const focusState = {
+  size: null,
+  fontFamily: null,
+};
+let latestReport = null;
 
 let out = '';
 
@@ -637,11 +740,13 @@ const report = withRequestId({
 });
 
 document.body.removeChild(container);
+latestReport = report;
 outputNode.innerHTML = out;
 summaryNode.hidden = false;
 summaryNode.textContent = formatSummary(report);
 renderSummaryGrid(report);
 renderFontSummaryGrid(report);
+renderDetailPanel(report);
 renderContextCards(report);
 
 if (reportRequested) {
@@ -1088,9 +1193,65 @@ function renderFontSummaryGrid(report) {
   fontSummaryGridNode.replaceChildren(...summaries.map(createFontSummaryCard));
 }
 
+function renderDetailPanel(report) {
+  if (focusState.size === null && focusState.fontFamily === null) {
+    detailPanelNode.hidden = true;
+    detailPanelNode.replaceChildren();
+    return;
+  }
+
+  detailPanelNode.hidden = false;
+  const head = document.createElement('div');
+  head.className = 'detail-panel-head';
+  const title = document.createElement('div');
+  title.className = 'detail-panel-title';
+  title.textContent = buildDetailTitle();
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.className = 'detail-panel-reset';
+  reset.textContent = 'Clear focus';
+  reset.addEventListener('click', clearFocusSelection);
+  head.append(title, reset);
+
+  const grid = document.createElement('div');
+  grid.className = 'detail-panel-grid';
+  grid.append(...buildDetailCards(report));
+
+  detailPanelNode.replaceChildren(head, grid);
+}
+
+function buildDetailTitle() {
+  if (focusState.size !== null && focusState.fontFamily !== null) {
+    return `${focusState.size}px × ${compactFontLabel(focusState.fontFamily)}`
+  }
+  if (focusState.size !== null) return `${focusState.size}px drilldown`
+  return `${compactFontLabel(focusState.fontFamily)} drilldown`
+}
+
+function buildDetailCards(report) {
+  if (focusState.size !== null && focusState.fontFamily !== null) {
+    return [
+      createIntersectionDetailCard(report, focusState.size, focusState.fontFamily),
+    ];
+  }
+
+  if (focusState.size !== null) {
+    return fonts.map(fontFamily => createSizeDetailCard(report, focusState.size, fontFamily));
+  }
+
+  return sizes.map(size => createFontDetailCard(report, size, focusState.fontFamily));
+}
+
 function createSummaryCard(summary) {
   const element = document.createElement('article');
   element.className = summary.constantAcrossFonts ? 'summary-card is-constant' : 'summary-card is-variable';
+  if (focusState.size === summary.size) element.className += ' is-selected';
+  element.tabIndex = 0;
+  element.role = 'button';
+  element.addEventListener('click', () => {
+    focusState.size = focusState.size === summary.size ? null : summary.size;
+    rerenderFocus();
+  });
 
   const sizeRow = document.createElement('div');
   sizeRow.className = 'summary-card-size';
@@ -1142,6 +1303,13 @@ function createFontSummaryCard(summary) {
 
   const element = document.createElement('article');
   element.className = `font-card is-${tone}`;
+  if (focusState.fontFamily === summary.fontFamily) element.className += ' is-selected';
+  element.tabIndex = 0;
+  element.role = 'button';
+  element.addEventListener('click', () => {
+    focusState.fontFamily = focusState.fontFamily === summary.fontFamily ? null : summary.fontFamily;
+    rerenderFocus();
+  });
 
   const titleRow = document.createElement('div');
   titleRow.className = 'font-card-title';
@@ -1189,6 +1357,123 @@ function createFontSummaryRow(label, value) {
 function compactFontLabel(fontFamily) {
   const normalized = fontFamily.replaceAll('"', '');
   return normalized.split(',')[0] ?? normalized;
+}
+
+function rerenderFocus() {
+  if (latestReport === null) return;
+  renderSummaryGrid(latestReport);
+  renderFontSummaryGrid(latestReport);
+  renderDetailPanel(latestReport);
+}
+
+function clearFocusSelection() {
+  focusState.size = null;
+  focusState.fontFamily = null;
+  rerenderFocus();
+}
+
+function getEntriesForFocus(size, fontFamily) {
+  const fontMap = diffsBySizeFont.get(size);
+  return fontMap?.get(fontFamily) ?? [];
+}
+
+function getMismatchEntries(size, fontFamily) {
+  return getEntriesForFocus(size, fontFamily).filter(entry => Math.abs(entry.diff) >= thresholdPx);
+}
+
+function formatCorrectionDiffs(entries) {
+  const values = [...new Set(entries.map(entry => Number(entry.diff.toFixed(2))))];
+  return values.length === 0 ? 'none' : values.map(diff => `${diff > 0 ? '+' : ''}${diff.toFixed(2)}`).join(', ');
+}
+
+function createIntersectionDetailCard(report, size, fontFamily) {
+  const mismatches = getMismatchEntries(size, fontFamily);
+  const card = createDetailCard(`${size}px × ${compactFontLabel(fontFamily)}`);
+  const summary = report.sizeSummaries.find(item => item.size === size);
+  card.append(
+    createDetailRow('mismatch', `${mismatches.length}/${emoji.length}`),
+    createDetailRow('corr', formatCorrectionDiffs(mismatches)),
+    createDetailRow('size mode', summary?.constantAcrossFonts ? 'constant' : 'variable'),
+  );
+
+  const strip = document.createElement('div');
+  strip.className = 'detail-chip-strip';
+  if (mismatches.length === 0) {
+    strip.append(createDetailChip('no mismatches'));
+  } else {
+    for (let index = 0; index < mismatches.length; index++) {
+      const mismatch = mismatches[index];
+      strip.append(createDetailChip(`${mismatch.emoji}${mismatch.diff > 0 ? '+' : ''}${mismatch.diff.toFixed(2)}`));
+    }
+  }
+  card.append(strip);
+  return card;
+}
+
+function createSizeDetailCard(report, size, fontFamily) {
+  const mismatches = getMismatchEntries(size, fontFamily);
+  const card = createDetailCard(compactFontLabel(fontFamily));
+  const fontSummary = report.fontSummaries.find(item => item.fontFamily === fontFamily);
+  card.append(
+    createDetailRow('mismatch', `${mismatches.length}/${emoji.length}`),
+    createDetailRow('corr', formatCorrectionDiffs(mismatches)),
+    createDetailRow('font spread', fontSummary?.mismatchSizes.length === 0 ? 'clean' : fontSummary.mismatchSizes.join(', ')),
+  );
+  const strip = document.createElement('div');
+  strip.className = 'detail-chip-strip';
+  strip.append(
+    createDetailChip(mismatches.length === 0 ? 'stable' : `${mismatches.slice(0, 6).map(item => item.emoji).join(' ')}`),
+  );
+  card.append(strip);
+  return card;
+}
+
+function createFontDetailCard(report, size, fontFamily) {
+  const mismatches = getMismatchEntries(size, fontFamily);
+  const card = createDetailCard(`${size}px`);
+  const sizeSummary = report.sizeSummaries.find(item => item.size === size);
+  card.append(
+    createDetailRow('mismatch', `${mismatches.length}/${emoji.length}`),
+    createDetailRow('corr', formatCorrectionDiffs(mismatches)),
+    createDetailRow('variance', sizeSummary?.constantAcrossFonts ? '0.00px' : `${sizeSummary?.maxVariance.toFixed(2) ?? '0.00'}px`),
+  );
+  const strip = document.createElement('div');
+  strip.className = 'detail-chip-strip';
+  strip.append(
+    createDetailChip(mismatches.length === 0 ? 'stable' : `${mismatches.slice(0, 6).map(item => item.emoji).join(' ')}`),
+  );
+  card.append(strip);
+  return card;
+}
+
+function createDetailCard(title) {
+  const card = document.createElement('article');
+  card.className = 'detail-card';
+  const heading = document.createElement('div');
+  heading.className = 'detail-card-title';
+  heading.textContent = title;
+  card.append(heading);
+  return card;
+}
+
+function createDetailRow(label, value) {
+  const row = document.createElement('div');
+  row.className = 'detail-card-row';
+  const labelNode = document.createElement('span');
+  labelNode.className = 'detail-card-label';
+  labelNode.textContent = label;
+  const valueNode = document.createElement('span');
+  valueNode.className = 'detail-card-value';
+  valueNode.textContent = value;
+  row.append(labelNode, valueNode);
+  return row;
+}
+
+function createDetailChip(text) {
+  const chip = document.createElement('span');
+  chip.className = 'detail-chip';
+  chip.textContent = text;
+  return chip;
 }
 
 function getEnvironmentFingerprint() {
