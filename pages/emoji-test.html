@@ -554,8 +554,8 @@ const sizeSummaries = [];
 const fontSummaries = [];
 let totalMismatchObservations = 0;
 const focusState = {
-  size: null,
-  fontFamily: null,
+  size: parseFocusSizeParam(params.get('focusSize')),
+  fontFamily: parseFocusFontParam(params.get('focusFont')),
 };
 let latestReport = null;
 
@@ -1031,6 +1031,8 @@ function buildScenarioQuery(matchedPresetKey) {
     next.set('sizes', sizes.join(','));
     next.set('threshold', String(thresholdPx));
   }
+  if (focusState.size !== null) next.set('focusSize', String(focusState.size));
+  if (focusState.fontFamily !== null) next.set('focusFont', compactFontLabel(focusState.fontFamily));
   const query = next.toString();
   return query.length === 0 ? '' : `?${query}`;
 }
@@ -1359,11 +1361,28 @@ function compactFontLabel(fontFamily) {
   return normalized.split(',')[0] ?? normalized;
 }
 
+function parseFocusSizeParam(raw) {
+  if (raw === null || raw.trim() === '') return null;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) return null;
+  return sizes.includes(parsed) ? parsed : null;
+}
+
+function parseFocusFontParam(raw) {
+  if (raw === null || raw.trim() === '') return null;
+  const normalized = raw.trim().toLowerCase();
+  for (const fontFamily of fonts) {
+    if (compactFontLabel(fontFamily).toLowerCase() === normalized) return fontFamily;
+  }
+  return null;
+}
+
 function rerenderFocus() {
   if (latestReport === null) return;
   renderSummaryGrid(latestReport);
   renderFontSummaryGrid(latestReport);
   renderDetailPanel(latestReport);
+  renderScenarioCards();
 }
 
 function clearFocusSelection() {

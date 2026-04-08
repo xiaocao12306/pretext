@@ -144,7 +144,7 @@ let latestReport: JustificationReport | null = null
 let reportPublished = false
 let resources: ReturnType<typeof createDemoResources> | null = null
 let latestCssOverlaySummary: CssOverlaySummary = { riverMarkCount: 0 }
-let focusedColumn: ColumnKey | null = null
+let focusedColumn: ColumnKey | null = parseFocusColumnParam(params.get('focusColumn'))
 
 if (reportRequested) {
   clearNavigationReport()
@@ -170,6 +170,7 @@ dom.columns.forEach((column, index) => {
     if (latestReport !== null) renderComparisonGrid(latestReport)
     syncColumnSelection()
     renderDetailPanel(latestReport)
+    renderScenarioCards(state.controls)
   })
 })
 
@@ -390,6 +391,7 @@ function createComparisonCard(
     renderComparisonGrid(report)
     renderDetailPanel(report)
     syncColumnSelection()
+    renderScenarioCards(state.controls)
   })
 
   const titleRow = document.createElement('div')
@@ -461,6 +463,7 @@ function renderDetailPanel(report: JustificationReport | null): void {
     renderComparisonGrid(report)
     renderDetailPanel(report)
     syncColumnSelection()
+    renderScenarioCards(state.controls)
   })
   head.append(title, reset)
 
@@ -785,6 +788,7 @@ function buildScenarioQuery(
     next.set('width', String(controls.colWidth))
     next.set('showIndicators', controls.showIndicators ? '1' : '0')
   }
+  if (focusedColumn !== null) next.set('focusColumn', focusedColumn)
   const query = next.toString()
   return query.length === 0 ? '' : `?${query}`
 }
@@ -804,6 +808,11 @@ function normalizeJustificationPath(pathname: string, target: 'demo' | 'root'): 
   return pathname.includes('/demos/')
     ? pathname.replace(/\/demos\/justification-comparison\/?$/, '/justification-comparison')
     : pathname.replace(/\/justification-comparison\/?$/, '/justification-comparison')
+}
+
+function parseFocusColumnParam(raw: string | null): ColumnKey | null {
+  if (raw === 'css' || raw === 'hyphen' || raw === 'optimal') return raw
+  return null
 }
 
 function createScenarioCard(definition: {
