@@ -82,6 +82,103 @@
   .preset-card.is-active .preset-card-row {
     color: #b7d7e4;
   }
+  .context-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin: 0 0 16px;
+  }
+  .context-card {
+    padding: 12px 14px;
+    border: 1px solid #222;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(18, 18, 18, 0.98), rgba(12, 12, 12, 0.96));
+    color: #d5d5d5;
+  }
+  .context-card-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0 0 8px;
+    color: #fff;
+    font: 700 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .context-card-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 20px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: rgba(79,195,247,0.14);
+    color: #9edfff;
+    font: 700 10px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .context-card-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font: 12px/1.45 "SF Mono", monospace;
+    color: #9c9c9c;
+  }
+  .context-card-row + .context-card-row {
+    margin-top: 2px;
+  }
+  .context-card-label {
+    color: #7d7d7d;
+  }
+  .context-card-value {
+    color: #d5d5d5;
+    text-align: right;
+  }
+  .asset-chip-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0 0;
+  }
+  .asset-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid #242424;
+    background: #101010;
+    color: #d5d5d5;
+    text-decoration: none;
+    font: 600 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+  }
+  .asset-chip:hover {
+    border-color: #3a3a3a;
+    color: #fff;
+  }
+  .asset-chip img {
+    width: 14px;
+    height: 14px;
+    display: block;
+  }
+  .context-card-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0 0;
+  }
+  .context-card-source {
+    color: #9edfff;
+    text-decoration: none;
+    font: 600 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .context-card-source:hover {
+    color: #d5f2ff;
+  }
   .probe-link {
     display: inline-flex;
     align-items: center;
@@ -254,6 +351,7 @@
 <p class="sub">Tests whether emoji canvas/DOM diff is constant across fonts (font-independent) or varies per font.</p>
 <nav id="probeRail" class="probe-rail" aria-label="Emoji probe presets"></nav>
 <section id="presetCardGrid" class="preset-card-grid" aria-label="Emoji preset cards"></section>
+<section id="contextCardGrid" class="context-card-grid" aria-label="Emoji context cards"></section>
 <section id="routeCardGrid" class="route-card-grid" aria-label="Emoji scenario links"></section>
 <div id="summaryPanel" class="panel" hidden></div>
 <section id="sizeSummaryGrid" class="summary-grid" hidden aria-label="Emoji size summary cards"></section>
@@ -299,6 +397,18 @@ const fonts = [
 const defaultPreset = EMOJI_PROBE_PRESETS[0];
 if (defaultPreset === undefined) throw new Error('emoji probe presets missing');
 const defaultSizes = defaultPreset.sizes;
+const RELATED_ASSETS = [
+  {
+    label: 'OpenAI',
+    src: '/assets/openai-symbol.svg',
+    sourceHref: '/assets/openai-symbol.svg',
+  },
+  {
+    label: 'Claude',
+    src: '/assets/claude-symbol.svg',
+    sourceHref: '/assets/claude-symbol.svg',
+  },
+];
 
 const params = new URLSearchParams(location.search);
 const requestedPreset = findPresetParam(params.get('preset'));
@@ -318,6 +428,8 @@ const fontSummaryGridNode = document.getElementById('fontSummaryGrid');
 if (!(fontSummaryGridNode instanceof HTMLElement)) throw new Error('#fontSummaryGrid not found');
 const presetCardGridNode = document.getElementById('presetCardGrid');
 if (!(presetCardGridNode instanceof HTMLElement)) throw new Error('#presetCardGrid not found');
+const contextCardGridNode = document.getElementById('contextCardGrid');
+if (!(contextCardGridNode instanceof HTMLElement)) throw new Error('#contextCardGrid not found');
 const probeRailNode = document.getElementById('probeRail');
 if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found');
 
@@ -328,6 +440,7 @@ if (reportRequested) {
 
 renderProbeRail();
 renderPresetCards();
+renderContextCards(null);
 renderScenarioCards();
 
 const ctx = createMeasureContext();
@@ -529,6 +642,7 @@ summaryNode.hidden = false;
 summaryNode.textContent = formatSummary(report);
 renderSummaryGrid(report);
 renderFontSummaryGrid(report);
+renderContextCards(report);
 
 if (reportRequested) {
   publishNavigationReport(report);
@@ -592,6 +706,33 @@ function renderPresetCards() {
   presetCardGridNode.replaceChildren(...cards);
 }
 
+function renderContextCards(report) {
+  const matchedPresetKey = findMatchingPresetKey();
+  const cards = [
+    createContextCard({
+      title: 'Sweep context',
+      badge: matchedPresetKey ?? 'manual',
+      rows: [
+        ['sizes', formatPresetSizes(sizes)],
+        ['threshold', `${thresholdPx.toFixed(2)}px`],
+        ['sampled', `${sizes.length} sizes`],
+      ],
+    }),
+    createContextCard({
+      title: 'Matrix scope',
+      badge: report === null ? 'pending' : report.constantAcrossAllSizes ? 'stable' : 'variable',
+      rows: [
+        ['fonts', String(fonts.length)],
+        ['emoji', String(emoji.length)],
+        ['variable', report === null ? 'pending' : report.variableSizes.length === 0 ? 'none' : report.variableSizes.join(', ')],
+      ],
+    }),
+    createAssetBridgeCard(),
+  ];
+
+  contextCardGridNode.replaceChildren(...cards);
+}
+
 function renderScenarioCards() {
   const cards = buildScenarioCardDefinitions().map(createScenarioCard);
   routeCardGridNode.replaceChildren(...cards);
@@ -640,6 +781,97 @@ function createPresetCardRow(label, value) {
   right.textContent = value;
   row.append(left, right);
   return row;
+}
+
+function createContextCard(definition) {
+  const element = document.createElement('article');
+  element.className = 'context-card';
+
+  const titleRow = document.createElement('div');
+  titleRow.className = 'context-card-title';
+  const title = document.createElement('span');
+  title.textContent = definition.title;
+  titleRow.append(title);
+
+  if (definition.badge !== null && definition.badge !== undefined) {
+    const badge = document.createElement('span');
+    badge.className = 'context-card-badge';
+    badge.textContent = definition.badge;
+    titleRow.append(badge);
+  }
+
+  element.append(titleRow, ...definition.rows.map(([label, value]) => createContextCardRow(label, value)));
+  return element;
+}
+
+function createContextCardRow(label, value) {
+  const row = document.createElement('div');
+  row.className = 'context-card-row';
+  const left = document.createElement('span');
+  left.className = 'context-card-label';
+  left.textContent = label;
+  const right = document.createElement('span');
+  right.className = 'context-card-value';
+  right.textContent = value;
+  row.append(left, right);
+  return row;
+}
+
+function createAssetBridgeCard() {
+  const element = document.createElement('article');
+  element.className = 'context-card';
+
+  const titleRow = document.createElement('div');
+  titleRow.className = 'context-card-title';
+  const title = document.createElement('span');
+  title.textContent = 'Asset bridge';
+  const badge = document.createElement('span');
+  badge.className = 'context-card-badge';
+  badge.textContent = 'pages/assets';
+  titleRow.append(title, badge);
+
+  const strip = document.createElement('div');
+  strip.className = 'asset-chip-strip';
+  strip.append(...RELATED_ASSETS.map(createAssetChip));
+
+  const links = document.createElement('div');
+  links.className = 'context-card-links';
+  links.append(
+    createContextSourceLink('dynamic-layout', '/demos/dynamic-layout?preset=spread-1365'),
+    createContextSourceLink('editorial-engine', '/demos/editorial-engine?preset=stacked-1365'),
+  );
+
+  element.append(
+    titleRow,
+    createContextCardRow('inputs', `${RELATED_ASSETS.length} svg assets`),
+    createContextCardRow('handoff', 'editorial demos'),
+    strip,
+    links,
+  );
+  return element;
+}
+
+function createAssetChip(asset) {
+  const chip = document.createElement('a');
+  chip.className = 'asset-chip';
+  chip.href = asset.sourceHref;
+  chip.target = '_blank';
+  chip.rel = 'noreferrer';
+  const image = document.createElement('img');
+  image.src = asset.src;
+  image.alt = `${asset.label} symbol`;
+  const label = document.createElement('span');
+  label.textContent = asset.label;
+  chip.append(image, label);
+  return chip;
+}
+
+function createContextSourceLink(label, href) {
+  const link = document.createElement('a');
+  link.className = 'context-card-source';
+  link.href = href;
+  link.textContent = label;
+  return link;
 }
 
 function formatPresetSizes(values) {

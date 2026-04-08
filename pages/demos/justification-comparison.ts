@@ -88,12 +88,26 @@ const probeRailNode = document.getElementById('probeRail')
 if (!(probeRailNode instanceof HTMLElement)) throw new Error('#probeRail not found')
 const presetCardGridNode = document.getElementById('presetCardGrid')
 if (!(presetCardGridNode instanceof HTMLElement)) throw new Error('#presetCardGrid not found')
+const contextCardGridNode = document.getElementById('contextCardGrid')
+if (!(contextCardGridNode instanceof HTMLElement)) throw new Error('#contextCardGrid not found')
 const routeCardGridNode = document.getElementById('routeCardGrid')
 if (!(routeCardGridNode instanceof HTMLElement)) throw new Error('#routeCardGrid not found')
 const summaryPanelNode = document.getElementById('summaryPanel')
 if (!(summaryPanelNode instanceof HTMLElement)) throw new Error('#summaryPanel not found')
 const comparisonGridNode = document.getElementById('comparisonGrid')
 if (!(comparisonGridNode instanceof HTMLElement)) throw new Error('#comparisonGrid not found')
+const RELATED_ASSETS = [
+  {
+    label: 'OpenAI',
+    src: '/assets/openai-symbol.svg',
+    sourceHref: '/assets/openai-symbol.svg',
+  },
+  {
+    label: 'Claude',
+    src: '/assets/claude-symbol.svg',
+    sourceHref: '/assets/claude-symbol.svg',
+  },
+] as const
 const params = new URLSearchParams(location.search)
 const requestedPreset = findPresetParam(params.get('preset'))
 const requestId = params.get('requestId') ?? undefined
@@ -180,6 +194,7 @@ function render(): void {
   renderFrame(dom, frame, resources.normalSpaceWidth)
   renderProbeRail(frame.controls)
   renderPresetCards(frame.controls)
+  renderContextCards(frame.controls)
   renderScenarioCards(frame.controls)
   scheduleCssOverlaySync()
 }
@@ -456,6 +471,33 @@ function renderPresetCards(controls: DemoControls): void {
   presetCardGridNode.replaceChildren(...cards)
 }
 
+function renderContextCards(controls: DemoControls): void {
+  const matchedPreset = findMatchingJustificationPreset(controls)
+  const cards = [
+    createContextCard({
+      title: 'Preset context',
+      badge: matchedPreset?.key ?? 'manual',
+      rows: [
+        ['width', `${controls.colWidth}px`],
+        ['visualizers', controls.showIndicators ? 'on' : 'off'],
+        ['mode', matchedPreset?.label ?? 'manual'],
+      ],
+    }),
+    createContextCard({
+      title: 'Column stack',
+      badge: '3 modes',
+      rows: [
+        ['css', 'native justify'],
+        ['hyphen', 'pretext greedy'],
+        ['optimal', 'knuth-plass'],
+      ],
+    }),
+    createAssetBridgeCard(),
+  ]
+
+  contextCardGridNode.replaceChildren(...cards)
+}
+
 function renderScenarioCards(controls: DemoControls): void {
   const cards = buildScenarioCardDefinitions(controls).map(createScenarioCard)
   routeCardGridNode.replaceChildren(...cards)
@@ -621,6 +663,101 @@ function createPresetCard(definition: {
     createPresetCardRow('indicator', definition.indicatorSummary),
   )
   return element
+}
+
+function createContextCard(definition: {
+  title: string
+  badge: string | null
+  rows: Array<[string, string]>
+}): HTMLElement {
+  const element = document.createElement('article')
+  element.className = 'context-card'
+
+  const titleRow = document.createElement('div')
+  titleRow.className = 'context-card-title'
+  const title = document.createElement('span')
+  title.textContent = definition.title
+  titleRow.append(title)
+
+  if (definition.badge !== null) {
+    const badge = document.createElement('span')
+    badge.className = 'context-card-badge'
+    badge.textContent = definition.badge
+    titleRow.append(badge)
+  }
+
+  element.append(titleRow, ...definition.rows.map(([label, value]) => createContextCardRow(label, value)))
+  return element
+}
+
+function createContextCardRow(label: string, value: string): HTMLElement {
+  const row = document.createElement('div')
+  row.className = 'context-card-row'
+  const labelNode = document.createElement('span')
+  labelNode.className = 'context-card-label'
+  labelNode.textContent = label
+  const valueNode = document.createElement('span')
+  valueNode.className = 'context-card-value'
+  valueNode.textContent = value
+  row.append(labelNode, valueNode)
+  return row
+}
+
+function createAssetBridgeCard(): HTMLElement {
+  const element = document.createElement('article')
+  element.className = 'context-card'
+
+  const titleRow = document.createElement('div')
+  titleRow.className = 'context-card-title'
+  const title = document.createElement('span')
+  title.textContent = 'Asset bridge'
+  const badge = document.createElement('span')
+  badge.className = 'context-card-badge'
+  badge.textContent = 'pages/assets'
+  titleRow.append(title, badge)
+
+  const strip = document.createElement('div')
+  strip.className = 'asset-chip-strip'
+  strip.append(...RELATED_ASSETS.map(createAssetChip))
+
+  const links = document.createElement('div')
+  links.className = 'context-card-links'
+  links.append(
+    createContextSourceLink('dynamic-layout', '/demos/dynamic-layout?preset=spread-1365'),
+    createContextSourceLink('editorial-engine', '/demos/editorial-engine?preset=stacked-1365'),
+  )
+
+  element.append(
+    titleRow,
+    createContextCardRow('inputs', `${RELATED_ASSETS.length} svg assets`),
+    createContextCardRow('handoff', 'editorial demos'),
+    strip,
+    links,
+  )
+  return element
+}
+
+function createAssetChip(asset: { label: string; src: string; sourceHref: string }): HTMLElement {
+  const chip = document.createElement('a')
+  chip.className = 'asset-chip'
+  chip.href = asset.sourceHref
+  chip.target = '_blank'
+  chip.rel = 'noreferrer'
+  const image = document.createElement('img')
+  image.src = asset.src
+  image.alt = `${asset.label} symbol`
+  const label = document.createElement('span')
+  label.textContent = asset.label
+  chip.append(image, label)
+  return chip
+}
+
+function createContextSourceLink(label: string, href: string): HTMLAnchorElement {
+  const link = document.createElement('a')
+  link.className = 'context-card-source'
+  link.href = href
+  link.textContent = label
+  return link
 }
 
 function createPresetCardRow(label: string, value: string): HTMLElement {
