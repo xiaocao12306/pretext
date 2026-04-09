@@ -493,13 +493,16 @@ const fonts = [
 const defaultPreset = EMOJI_PROBE_PRESETS[0];
 if (defaultPreset === undefined) throw new Error('emoji probe presets missing');
 const defaultSizes = defaultPreset.sizes;
+const ASSET_PREVIEW_SIZES = [48, 72, 96, 144];
 const RELATED_ASSETS = [
   {
+    key: 'openai',
     label: 'OpenAI',
     src: '/assets/openai-symbol.svg',
     sourceHref: '/assets/openai-symbol.svg',
   },
   {
+    key: 'claude',
     label: 'Claude',
     src: '/assets/claude-symbol.svg',
     sourceHref: '/assets/claude-symbol.svg',
@@ -741,6 +744,8 @@ const report = withRequestId({
   constantAcrossAllSizes: sizeSummaries.every(summary => summary.constantAcrossFonts),
   fontIndependentSizes: sizeSummaries.filter(summary => summary.constantAcrossFonts).map(summary => summary.size),
   variableSizes: sizeSummaries.filter(summary => !summary.constantAcrossFonts).map(summary => summary.size),
+  routeCount: buildScenarioCardDefinitions().length,
+  assetPreviewSize: getAssetPreviewSize(),
 });
 
 document.body.removeChild(container);
@@ -938,6 +943,7 @@ function createContextCardRow(label, value) {
 function createAssetBridgeCard() {
   const element = document.createElement('article');
   element.className = 'context-card';
+  const assetPreviewSize = getAssetPreviewSize();
 
   const titleRow = document.createElement('div');
   titleRow.className = 'context-card-title';
@@ -956,6 +962,7 @@ function createAssetBridgeCard() {
   links.className = 'context-card-links';
   links.append(
     createContextSourceLink('asset-atlas', '/assets/'),
+    createContextSourceLink('asset-report', `${buildAssetAtlasPath('demo')}?size=${assetPreviewSize}&report=1`),
     createContextSourceLink('dynamic-layout', '/demos/dynamic-layout?preset=spread-1365'),
     createContextSourceLink('editorial-engine', '/demos/editorial-engine?preset=stacked-1365'),
   );
@@ -963,7 +970,8 @@ function createAssetBridgeCard() {
   element.append(
     titleRow,
     createContextCardRow('inputs', `${RELATED_ASSETS.length} svg assets`),
-    createContextCardRow('handoff', 'editorial demos'),
+    createContextCardRow('atlas size', `${assetPreviewSize}px`),
+    createContextCardRow('handoff', 'atlas + editorial demos'),
     strip,
     links,
   );
@@ -973,9 +981,7 @@ function createAssetBridgeCard() {
 function createAssetChip(asset) {
   const chip = document.createElement('a');
   chip.className = 'asset-chip';
-  chip.href = asset.sourceHref;
-  chip.target = '_blank';
-  chip.rel = 'noreferrer';
+  chip.href = buildAssetAtlasHref(asset.key);
   const image = document.createElement('img');
   image.src = asset.src;
   image.alt = `${asset.label} symbol`;
@@ -1012,6 +1018,10 @@ function buildScenarioCardDefinitions() {
   const query = buildScenarioQuery(matchedPresetKey);
   const rootPath = normalizeEmojiPath(location.pathname, 'root');
   const demoPath = normalizeEmojiPath(location.pathname, 'demo');
+  const assetDemoPath = buildAssetAtlasPath('demo');
+  const assetRootPath = buildAssetAtlasPath('root');
+  const assetPreviewSize = getAssetPreviewSize();
+  const assetQuery = `?size=${assetPreviewSize}`;
   return [
     {
       label: 'Root path',
@@ -1037,6 +1047,22 @@ function buildScenarioCardDefinitions() {
       route: 'checker',
       path: `${demoPath}?report=1`,
     },
+    {
+      label: 'Asset atlas',
+      href: `${assetRootPath}${assetQuery}`,
+      mode: `${assetPreviewSize}px`,
+      focus: 'all assets',
+      route: 'atlas',
+      path: assetRootPath,
+    },
+    {
+      label: 'Asset report',
+      href: `${assetDemoPath}${appendReportQuery(assetQuery)}`,
+      mode: `${assetPreviewSize}px`,
+      focus: 'all assets',
+      route: 'atlas-check',
+      path: `${assetDemoPath}?report=1`,
+    },
   ];
 }
 
@@ -1058,6 +1084,36 @@ function appendReportQuery(query) {
   const next = new URLSearchParams(query.startsWith('?') ? query.slice(1) : query);
   next.set('report', '1');
   return `?${next.toString()}`;
+}
+
+function getAssetPreviewSize() {
+  const anchorSize = focusState.size ?? sizes[Math.floor(sizes.length / 2)] ?? defaultSizes[Math.floor(defaultSizes.length / 2)] ?? 96;
+  return pickNearestAssetPreviewSize(anchorSize);
+}
+
+function pickNearestAssetPreviewSize(value) {
+  let best = ASSET_PREVIEW_SIZES[0];
+  let bestDistance = Math.abs(best - value);
+  for (let index = 1; index < ASSET_PREVIEW_SIZES.length; index++) {
+    const candidate = ASSET_PREVIEW_SIZES[index];
+    const distance = Math.abs(candidate - value);
+    if (distance < bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+function buildAssetAtlasPath(target) {
+  return target === 'root' ? '/assets' : '/assets/';
+}
+
+function buildAssetAtlasHref(assetKey) {
+  const next = new URLSearchParams();
+  next.set('asset', assetKey);
+  next.set('size', String(getAssetPreviewSize()));
+  return `${buildAssetAtlasPath('demo')}?${next.toString()}`;
 }
 
 function normalizeEmojiPath(pathname, target) {

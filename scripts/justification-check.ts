@@ -64,6 +64,8 @@ type JustificationReport = {
     maxDeviation: 'css' | 'hyphen' | 'optimal'
     riverCount: 'css' | 'hyphen' | 'optimal'
   }
+  routeCount?: number
+  assetPreviewSize?: number
   message?: string
 }
 
@@ -76,7 +78,11 @@ type JustificationSummaryRow = {
   bestRiver: string
   hyphenAvgDelta: number
   optimalAvgDelta: number
+  routeCount: number
+  assetPreviewSize: number | null
 }
+
+const ASSET_PREVIEW_SIZES = [48, 72, 96, 144] as const
 
 type JustificationRun = {
   label: string
@@ -204,6 +210,7 @@ function printReport(report: JustificationReport): void {
     `preset ${report.presetKey ?? 'manual'} | ` +
     `${controls.colWidth}px | indicators ${controls.showIndicators ? 'on' : 'off'} | ` +
     `focus ${report.focusColumn ?? 'all-columns'} | ` +
+    `routes ${report.routeCount ?? '?'} | asset ${report.assetPreviewSize ?? '?'}px | ` +
     `css ${formatColumn(columns.css)} | ` +
     `hyphen ${formatColumn(columns.hyphen)} | ` +
     `optimal ${formatColumn(columns.optimal)}`,
@@ -251,6 +258,42 @@ function validateFocusColumn(
   return false
 }
 
+function pickNearestAssetPreviewSize(value: number): number {
+  let best = ASSET_PREVIEW_SIZES[0]!
+  let bestDistance = Math.abs(best - value)
+  for (let index = 1; index < ASSET_PREVIEW_SIZES.length; index++) {
+    const candidate = ASSET_PREVIEW_SIZES[index]!
+    const distance = Math.abs(candidate - value)
+    if (distance < bestDistance) {
+      best = candidate
+      bestDistance = distance
+    }
+  }
+  return best
+}
+
+function expectedJustificationAssetPreviewSize(width: number): number {
+  return pickNearestAssetPreviewSize(Math.round(width / 4))
+}
+
+function validateRouteReport(
+  report: JustificationReport,
+  expected: { routeCount: number; assetPreviewSize: number },
+): boolean {
+  if (report.status === 'error') return false
+  if (report.routeCount !== expected.routeCount) {
+    console.log(`protocol error: expected routeCount ${expected.routeCount}, received ${report.routeCount ?? 'none'}`)
+    return false
+  }
+  if (report.assetPreviewSize !== expected.assetPreviewSize) {
+    console.log(
+      `protocol error: expected assetPreviewSize ${expected.assetPreviewSize}, received ${report.assetPreviewSize ?? 'none'}`,
+    )
+    return false
+  }
+  return true
+}
+
 function formatRange(min: number, max: number): string {
   return min === max ? String(min) : `${min}..${max}`
 }
@@ -273,6 +316,8 @@ function toMatrixSummaryRow(entry: { run: JustificationRun; report: Justificatio
     bestRiver: report.bestColumns.riverCount,
     hyphenAvgDelta: report.comparisons.hyphenVsCss.avgDeviationDelta,
     optimalAvgDelta: report.comparisons.optimalVsCss.avgDeviationDelta,
+    routeCount: report.routeCount ?? 0,
+    assetPreviewSize: report.assetPreviewSize ?? null,
   }
 }
 
@@ -304,7 +349,8 @@ function printMatrixSummary(entries: Array<{ run: JustificationRun; report: Just
       `  ${row.preset} -> width ${row.width} | indicators ${row.showIndicators ? 'on' : 'off'} | ` +
       `rivers ${row.cssOverlayRiverCount} | ` +
       `best avg ${row.bestAvg} | best river ${row.bestRiver} | ` +
-      `Δhyphen ${formatSignedPercent(row.hyphenAvgDelta)} | Δoptimal ${formatSignedPercent(row.optimalAvgDelta)}`,
+      `Δhyphen ${formatSignedPercent(row.hyphenAvgDelta)} | Δoptimal ${formatSignedPercent(row.optimalAvgDelta)} | ` +
+      `routes ${row.routeCount} | asset ${row.assetPreviewSize ?? '?'}px`,
     )
   }
 }
@@ -349,7 +395,14 @@ try {
 
     if (run.presetKey === undefined) {
       printManualReport(report, run)
-      if (report.status === 'error' || !validateFocusColumn(report, run.focusColumn)) {
+      if (
+        report.status === 'error' ||
+        !validateFocusColumn(report, run.focusColumn) ||
+        !validateRouteReport(report, {
+          routeCount: 5,
+          assetPreviewSize: expectedJustificationAssetPreviewSize(run.width),
+        })
+      ) {
         process.exitCode = 1
       }
     } else {
@@ -358,7 +411,11 @@ try {
       if (
         report.status === 'error' ||
         !validatePresetReport(report, run.presetKey) ||
-        !validateFocusColumn(report, run.focusColumn)
+        !validateFocusColumn(report, run.focusColumn) ||
+        !validateRouteReport(report, {
+          routeCount: 5,
+          assetPreviewSize: expectedJustificationAssetPreviewSize(run.width),
+        })
       ) {
         process.exitCode = 1
       }

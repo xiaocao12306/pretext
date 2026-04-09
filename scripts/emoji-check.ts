@@ -69,6 +69,8 @@ type EmojiReport = {
   constantAcrossAllSizes?: boolean
   fontIndependentSizes?: number[]
   variableSizes?: number[]
+  routeCount?: number
+  assetPreviewSize?: number
   message?: string
 }
 
@@ -81,7 +83,11 @@ type EmojiSummaryRow = {
   noisyFontCount: number
   hottestFont: string | null
   focus: string
+  routeCount: number
+  assetPreviewSize: number | null
 }
+
+const ASSET_PREVIEW_SIZES = [48, 72, 96, 144] as const
 
 function parseStringFlag(name: string): string | null {
   const prefix = `--${name}=`
@@ -101,6 +107,16 @@ function parseOptionalPositiveInt(raw: string | null): number | null {
   if (raw === null || raw.trim() === '') return null
   const parsed = Number.parseInt(raw, 10)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+}
+
+function parseSizes(raw: string | null): number[] {
+  const fallback = EMOJI_PROBE_PRESETS[0]?.sizes ?? [16, 24, 32]
+  if (raw === null || raw.trim() === '') return fallback.slice()
+  const parsed = raw
+    .split(',')
+    .map(part => Number.parseInt(part.trim(), 10))
+    .filter(value => Number.isFinite(value) && value > 0)
+  return parsed.length === 0 ? fallback.slice() : parsed
 }
 
 function parsePresetKeys(raw: string | null): EmojiProbePreset[] {
@@ -131,7 +147,8 @@ function printReport(report: EmojiReport): void {
     `emoji ${report.emojiCount ?? '?'} | fonts ${report.fontCount ?? '?'} | ` +
     `constant-all-sizes ${report.constantAcrossAllSizes ? 'yes' : 'no'} | ` +
     `threshold ${report.thresholdPx?.toFixed(2) ?? '?'} | ` +
-    `sizes ${(report.sizes ?? []).join(',') || '?'}`,
+    `sizes ${(report.sizes ?? []).join(',') || '?'} | ` +
+    `routes ${report.routeCount ?? '?'} | asset ${report.assetPreviewSize ?? '?'}px`,
   )
   console.log(`focus: ${formatEmojiFocus(report.focus)}`)
   if (report.environment !== undefined) {
@@ -201,6 +218,8 @@ function toSummaryRow(entry: { preset: EmojiProbePreset['key']; report: EmojiRep
     noisyFontCount: noisyFonts.length,
     hottestFont: hottestFont === null ? null : compactFontLabel(hottestFont.fontFamily),
     focus: formatEmojiFocus(report.focus),
+    routeCount: report.routeCount ?? 0,
+    assetPreviewSize: report.assetPreviewSize ?? null,
   }
 }
 
@@ -233,7 +252,7 @@ function printMatrixSummary(entries: Array<{ preset: EmojiProbePreset['key']; re
       `mismatch ${row.totalMismatchObservations} | variable sizes ${row.variableSizeCount} | ` +
       `max variance ${row.maxVariance.toFixed(2)}px | noisy fonts ${row.noisyFontCount}` +
       (row.hottestFont === null ? '' : ` | hot ${row.hottestFont}`) +
-      ` | focus ${row.focus}`,
+      ` | routes ${row.routeCount} | asset ${row.assetPreviewSize ?? '?'}px | focus ${row.focus}`,
     )
   }
 }
@@ -267,12 +286,56 @@ function validateFocusReport(
   return false
 }
 
+function pickNearestAssetPreviewSize(value: number): number {
+  let best = ASSET_PREVIEW_SIZES[0]!
+  let bestDistance = Math.abs(best - value)
+  for (let index = 1; index < ASSET_PREVIEW_SIZES.length; index++) {
+    const candidate = ASSET_PREVIEW_SIZES[index]!
+    const distance = Math.abs(candidate - value)
+    if (distance < bestDistance) {
+      best = candidate
+      bestDistance = distance
+    }
+  }
+  return best
+}
+
+function expectedEmojiAssetPreviewSize(
+  sizeList: number[],
+  focus: { size: number | null; fontFamily: string | null },
+): number {
+  const fallbackPreset = EMOJI_PROBE_PRESETS[0]
+  const fallbackSize =
+    fallbackPreset?.sizes[Math.floor(fallbackPreset.sizes.length / 2)] ?? 96
+  const anchorSize = focus.size ?? sizeList[Math.floor(sizeList.length / 2)] ?? fallbackSize
+  return pickNearestAssetPreviewSize(anchorSize)
+}
+
+function validateRouteReport(
+  report: EmojiReport,
+  expected: { routeCount: number; assetPreviewSize: number },
+): boolean {
+  if (report.status === 'error') return false
+  if (report.routeCount !== expected.routeCount) {
+    console.log(`protocol error: expected routeCount ${expected.routeCount}, received ${report.routeCount ?? 'none'}`)
+    return false
+  }
+  if (report.assetPreviewSize !== expected.assetPreviewSize) {
+    console.log(
+      `protocol error: expected assetPreviewSize ${expected.assetPreviewSize}, received ${report.assetPreviewSize ?? 'none'}`,
+    )
+    return false
+  }
+  return true
+}
+
 const browser = parseBrowser(parseStringFlag('browser'))
 const requestedPortRaw = parseStringFlag('port')
 const requestedPort = requestedPortRaw === null ? null : Number.parseInt(requestedPortRaw, 10)
 const output = parseStringFlag('output')
 const timeoutMs = Number.parseInt(process.env['EMOJI_CHECK_TIMEOUT_MS'] ?? '60000', 10)
 const sizes = parseStringFlag('sizes')
+const parsedSizes = parseSizes(sizes)
 const threshold = parseStringFlag('threshold')
 const presets = parsePresetKeys(parseStringFlag('presets'))
 const focusSize = parseOptionalPositiveInt(parseStringFlag('focusSize'))
@@ -306,7 +369,13 @@ try {
 
     if (report.status === 'error') {
       process.exitCode = 1
-    } else if (!validateFocusReport(report, { size: focusSize, fontFamily: focusFont })) {
+    } else if (
+      !validateFocusReport(report, { size: focusSize, fontFamily: focusFont }) ||
+      !validateRouteReport(report, {
+        routeCount: 5,
+        assetPreviewSize: expectedEmojiAssetPreviewSize(parsedSizes, { size: focusSize, fontFamily: focusFont }),
+      })
+    ) {
       process.exitCode = 1
     }
   } else {
@@ -327,7 +396,11 @@ try {
       if (
         report.status === 'error' ||
         !validatePresetReport(report, preset.key) ||
-        !validateFocusReport(report, { size: focusSize, fontFamily: focusFont })
+        !validateFocusReport(report, { size: focusSize, fontFamily: focusFont }) ||
+        !validateRouteReport(report, {
+          routeCount: 5,
+          assetPreviewSize: expectedEmojiAssetPreviewSize(preset.sizes, { size: focusSize, fontFamily: focusFont }),
+        })
       ) {
         process.exitCode = 1
       }

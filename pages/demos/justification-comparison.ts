@@ -69,6 +69,8 @@ type JustificationReport = {
     maxDeviation: 'css' | 'hyphen' | 'optimal'
     riverCount: 'css' | 'hyphen' | 'optimal'
   }
+  routeCount: number
+  assetPreviewSize: number
 }
 
 type State = {
@@ -101,13 +103,16 @@ const comparisonGridNode = document.getElementById('comparisonGrid')
 if (!(comparisonGridNode instanceof HTMLElement)) throw new Error('#comparisonGrid not found')
 const detailPanelNode = document.getElementById('detailPanel')
 if (!(detailPanelNode instanceof HTMLElement)) throw new Error('#detailPanel not found')
+const ASSET_PREVIEW_SIZES = [48, 72, 96, 144] as const
 const RELATED_ASSETS = [
   {
+    key: 'openai',
     label: 'OpenAI',
     src: '/assets/openai-symbol.svg',
     sourceHref: '/assets/openai-symbol.svg',
   },
   {
+    key: 'claude',
     label: 'Claude',
     src: '/assets/claude-symbol.svg',
     sourceHref: '/assets/claude-symbol.svg',
@@ -285,6 +290,8 @@ function buildReport(
       maxDeviation: pickBestColumn(frame, column => column.maxDeviation),
       riverCount: pickBestColumn(frame, column => column.riverCount),
     },
+    routeCount: buildScenarioCardDefinitions(frame.controls).length,
+    assetPreviewSize: getAssetPreviewSize(frame.controls),
   }
 }
 
@@ -765,6 +772,10 @@ function buildScenarioCardDefinitions(controls: DemoControls): Array<{
   const query = buildScenarioQuery(controls, matchedPreset)
   const demoPath = normalizeJustificationPath(location.pathname, 'demo')
   const rootPath = normalizeJustificationPath(location.pathname, 'root')
+  const assetDemoPath = buildAssetAtlasPath('demo')
+  const assetRootPath = buildAssetAtlasPath('root')
+  const assetPreviewSize = getAssetPreviewSize(controls)
+  const assetQuery = `?size=${assetPreviewSize}`
   return [
     {
       label: 'Demo path',
@@ -790,6 +801,22 @@ function buildScenarioCardDefinitions(controls: DemoControls): Array<{
       route: 'checker',
       path: `${demoPath}?report=1`,
     },
+    {
+      label: 'Asset atlas',
+      href: `${assetRootPath}${assetQuery}`,
+      mode: `${assetPreviewSize}px`,
+      focus: 'all assets',
+      route: 'atlas',
+      path: assetRootPath,
+    },
+    {
+      label: 'Asset report',
+      href: `${assetDemoPath}${appendReportQuery(assetQuery)}`,
+      mode: `${assetPreviewSize}px`,
+      focus: 'all assets',
+      route: 'atlas-check',
+      path: `${assetDemoPath}?report=1`,
+    },
   ]
 }
 
@@ -813,6 +840,35 @@ function appendReportQuery(query: string): string {
   const next = new URLSearchParams(query.startsWith('?') ? query.slice(1) : query)
   next.set('report', '1')
   return `?${next.toString()}`
+}
+
+function getAssetPreviewSize(controls: DemoControls): number {
+  return pickNearestAssetPreviewSize(Math.round(controls.colWidth / 4))
+}
+
+function pickNearestAssetPreviewSize(value: number): number {
+  let best = ASSET_PREVIEW_SIZES[0]!
+  let bestDistance = Math.abs(best - value)
+  for (let index = 1; index < ASSET_PREVIEW_SIZES.length; index++) {
+    const candidate = ASSET_PREVIEW_SIZES[index]!
+    const distance = Math.abs(candidate - value)
+    if (distance < bestDistance) {
+      best = candidate
+      bestDistance = distance
+    }
+  }
+  return best
+}
+
+function buildAssetAtlasPath(target: 'demo' | 'root'): string {
+  return target === 'root' ? '/assets' : '/assets/'
+}
+
+function buildAssetAtlasHref(assetKey: string, controls: DemoControls): string {
+  const next = new URLSearchParams()
+  next.set('asset', assetKey)
+  next.set('size', String(getAssetPreviewSize(controls)))
+  return `${buildAssetAtlasPath('demo')}?${next.toString()}`
 }
 
 function normalizeJustificationPath(pathname: string, target: 'demo' | 'root'): string {
@@ -949,6 +1005,7 @@ function createContextCardRow(label: string, value: string): HTMLElement {
 function createAssetBridgeCard(): HTMLElement {
   const element = document.createElement('article')
   element.className = 'context-card'
+  const assetPreviewSize = getAssetPreviewSize(state.controls)
 
   const titleRow = document.createElement('div')
   titleRow.className = 'context-card-title'
@@ -967,6 +1024,7 @@ function createAssetBridgeCard(): HTMLElement {
   links.className = 'context-card-links'
   links.append(
     createContextSourceLink('asset-atlas', '/assets/'),
+    createContextSourceLink('asset-report', `${buildAssetAtlasPath('demo')}?size=${assetPreviewSize}&report=1`),
     createContextSourceLink('dynamic-layout', '/demos/dynamic-layout?preset=spread-1365'),
     createContextSourceLink('editorial-engine', '/demos/editorial-engine?preset=stacked-1365'),
   )
@@ -974,19 +1032,18 @@ function createAssetBridgeCard(): HTMLElement {
   element.append(
     titleRow,
     createContextCardRow('inputs', `${RELATED_ASSETS.length} svg assets`),
-    createContextCardRow('handoff', 'editorial demos'),
+    createContextCardRow('atlas size', `${assetPreviewSize}px`),
+    createContextCardRow('handoff', 'atlas + editorial demos'),
     strip,
     links,
   )
   return element
 }
 
-function createAssetChip(asset: { label: string; src: string; sourceHref: string }): HTMLElement {
+function createAssetChip(asset: { key: string; label: string; src: string; sourceHref: string }): HTMLElement {
   const chip = document.createElement('a')
   chip.className = 'asset-chip'
-  chip.href = asset.sourceHref
-  chip.target = '_blank'
-  chip.rel = 'noreferrer'
+  chip.href = buildAssetAtlasHref(asset.key, state.controls)
   const image = document.createElement('img')
   image.src = asset.src
   image.alt = `${asset.label} symbol`
