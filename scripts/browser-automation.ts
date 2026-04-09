@@ -610,7 +610,7 @@ export async function ensurePageServer(
     return { baseUrl: existingBaseUrl, process: null }
   }
 
-  const serverProcess = spawn('/bin/zsh', ['-lc', `bun --port=${port} --no-hmr pages/*.html pages/demos/*.html pages/demos/*/index.html`], {
+  const serverProcess = spawn('/bin/zsh', ['-lc', `bun --port=${port} --no-hmr pages/*.html pages/demos/*.html pages/demos/*/index.html pages/assets/*/index.html`], {
     cwd,
     stdio: 'ignore',
   })

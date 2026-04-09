@@ -214,6 +214,39 @@
     <section id="assetGrid" class="asset-grid" aria-label="Asset previews"></section>
   </main>
   <script type="module">
+    import { clearNavigationReport, publishNavigationPhase, publishNavigationReport } from '../report-utils.ts'
+
+    /**
+     * @typedef {{
+     *   key: 'openai' | 'claude'
+     *   label: string
+     *   src: string
+     *   sourceHref: string
+     *   viewBox: string
+     *   nativeSize: string
+     *   role: string
+     * }} AssetDefinition
+     *
+     * @typedef {{
+     *   status: 'ready' | 'error'
+     *   requestId?: string
+     *   assetCount: number
+     *   visibleAssetCount: number
+     *   focusAsset: 'openai' | 'claude' | null
+     *   previewSize: number
+     *   routeCount: number
+     *   assets: Array<{
+     *     key: 'openai' | 'claude'
+     *     label: string
+     *     sourceHref: string
+     *     visible: boolean
+     *     viewBox: string
+     *     nativeSize: string
+     *   }>
+     * }} AssetAtlasReport
+     */
+
+    /** @type {AssetDefinition[]} */
     const ASSETS = [
       {
         key: 'openai',
@@ -266,6 +299,8 @@
     const params = new URLSearchParams(location.search)
     const requestedAsset = parseAssetParam(params.get('asset'))
     const previewSize = parsePreviewSize(params.get('size'))
+    const requestId = params.get('requestId') ?? undefined
+    const reportRequested = params.get('report') === '1'
 
     const summaryPanelNode = document.getElementById('summaryPanel')
     const assetRailNode = document.getElementById('assetRail')
@@ -278,7 +313,14 @@
     if (!(contextGridNode instanceof HTMLElement)) throw new Error('#contextGrid not found')
     if (!(assetGridNode instanceof HTMLElement)) throw new Error('#assetGrid not found')
 
+    if (reportRequested) {
+      clearNavigationReport()
+      publishNavigationPhase('loading', requestId)
+    }
+
+    if (reportRequested) publishNavigationPhase('measuring', requestId)
     render()
+    if (reportRequested) publishNavigationReport(buildReport())
 
     function render() {
       summaryPanelNode.textContent = [
@@ -293,6 +335,28 @@
       renderSizeRail()
       renderContextGrid()
       renderAssetGrid()
+    }
+
+    /** @returns {AssetAtlasReport} */
+    function buildReport() {
+      const assets = ASSETS.map(asset => ({
+        key: asset.key,
+        label: asset.label,
+        sourceHref: asset.sourceHref,
+        visible: requestedAsset === null || requestedAsset === asset.key,
+        viewBox: asset.viewBox,
+        nativeSize: asset.nativeSize,
+      }))
+
+      return withRequestId({
+        status: 'ready',
+        assetCount: ASSETS.length,
+        visibleAssetCount: assets.filter(asset => asset.visible).length,
+        focusAsset: requestedAsset,
+        previewSize,
+        routeCount: DEMO_LINKS.length,
+        assets,
+      })
     }
 
     function renderAssetRail() {
@@ -460,6 +524,15 @@
     function parsePreviewSize(raw) {
       const parsed = Number.parseInt(raw ?? '', 10)
       return PREVIEW_SIZES.includes(parsed) ? parsed : PREVIEW_SIZES[2]
+    }
+
+    /**
+     * @template {AssetAtlasReport} T
+     * @param {T} report
+     * @returns {T}
+     */
+    function withRequestId(report) {
+      return requestId === undefined ? report : { ...report, requestId }
     }
   </script>
 </body>

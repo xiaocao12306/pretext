@@ -14,6 +14,7 @@ const entrypoints = [
   'pages/demos/rich-note.html',
   'pages/demos/variable-typographic-ascii.html',
   'pages/emoji-test.html',
+  'pages/assets/index.html',
 ]
 
 const result = Bun.spawnSync(
@@ -40,6 +41,7 @@ const targets = [
   { source: 'rich-note.html', target: 'rich-note/index.html' },
   { source: 'variable-typographic-ascii.html', target: 'variable-typographic-ascii/index.html' },
   { source: 'emoji-test.html', target: 'emoji-test/index.html' },
+  { source: 'assets/index.html', target: 'assets/index.html' },
 ]
 
 for (let index = 0; index < targets.length; index++) {
