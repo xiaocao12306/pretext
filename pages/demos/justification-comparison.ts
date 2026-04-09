@@ -966,6 +966,7 @@ function createAssetBridgeCard(): HTMLElement {
   const links = document.createElement('div')
   links.className = 'context-card-links'
   links.append(
+    createContextSourceLink('asset-atlas', '/assets/'),
     createContextSourceLink('dynamic-layout', '/demos/dynamic-layout?preset=spread-1365'),
     createContextSourceLink('editorial-engine', '/demos/editorial-engine?preset=stacked-1365'),
   )

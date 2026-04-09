@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Interactive atlas for the SVG assets that feed Pretext editorial demos.">
+  <title>Pretext Asset Atlas</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    html, body {
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top left, rgba(202, 97, 60, 0.14), transparent 32%),
+        radial-gradient(circle at right 18%, rgba(43, 78, 118, 0.13), transparent 28%),
+        linear-gradient(180deg, #fbf4ea 0%, #f4ebdf 100%);
+      color: #2c251f;
+    }
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      padding: 32px 20px 72px;
+    }
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+    h1 {
+      font: 300 42px/1.05 Georgia, "Times New Roman", serif;
+      letter-spacing: -0.04em;
+      color: #1f1813;
+      margin: 0 0 10px;
+    }
+    .subtitle {
+      max-width: 760px;
+      color: #6f6257;
+      font: 400 15px/1.55 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      margin: 0 0 20px;
+    }
+    .panel {
+      margin: 0 0 16px;
+      padding: 14px 16px;
+      border: 1px solid #dccfc0;
+      border-radius: 16px;
+      background: rgba(255, 251, 245, 0.88);
+      color: #5f5347;
+      font: 12px/1.6 "SF Mono", ui-monospace, monospace;
+      white-space: pre-wrap;
+      box-shadow: 0 18px 50px rgba(53, 39, 24, 0.06);
+    }
+    .rail {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 16px;
+    }
+    .rail-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 13px;
+      border-radius: 999px;
+      border: 1px solid #d8c8b8;
+      background: rgba(255, 250, 244, 0.92);
+      color: #54483d;
+      text-decoration: none;
+      font: 700 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .rail-link:hover {
+      border-color: #b68b68;
+      background: #fff7ef;
+      color: #2e261f;
+    }
+    .rail-link.is-active {
+      border-color: #a96842;
+      background: linear-gradient(180deg, #ead3bf, #e4c5ab);
+      color: #402d22;
+    }
+    .context-grid,
+    .asset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+      margin: 0 0 18px;
+    }
+    .context-card,
+    .asset-card {
+      border: 1px solid #dccfc0;
+      border-radius: 18px;
+      background: rgba(255, 251, 245, 0.9);
+      box-shadow: 0 18px 50px rgba(53, 39, 24, 0.06);
+    }
+    .context-card {
+      padding: 14px 16px;
+    }
+    .asset-card {
+      overflow: hidden;
+    }
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 0 0 10px;
+    }
+    .card-title {
+      font: 700 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #3b2f25;
+    }
+    .card-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(169, 104, 66, 0.13);
+      color: #7f563b;
+      font: 700 10px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .context-row,
+    .asset-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: #5f5347;
+      font: 12px/1.5 "SF Mono", ui-monospace, monospace;
+    }
+    .context-row + .context-row,
+    .asset-row + .asset-row {
+      margin-top: 3px;
+    }
+    .row-label { color: #8a7c6e; }
+    .row-value { text-align: right; color: #3c322a; }
+    .asset-card.is-hidden { display: none; }
+    .asset-card.is-focused {
+      border-color: #b46a3b;
+      box-shadow: 0 20px 54px rgba(126, 72, 39, 0.14);
+    }
+    .asset-preview {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 260px;
+      padding: 28px 20px;
+      background:
+        radial-gradient(circle at top, rgba(255,255,255,0.8), transparent 46%),
+        linear-gradient(180deg, #fffaf3 0%, #f0e0ce 100%);
+      border-bottom: 1px solid #e3d5c5;
+    }
+    .asset-preview::before {
+      content: "";
+      position: absolute;
+      inset: 18px;
+      border: 1px dashed rgba(169, 104, 66, 0.28);
+      border-radius: 20px;
+    }
+    .asset-preview img {
+      position: relative;
+      display: block;
+      width: var(--preview-size);
+      height: var(--preview-size);
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 14px 24px rgba(83, 51, 26, 0.18));
+    }
+    .asset-body {
+      padding: 15px 16px 16px;
+    }
+    .asset-links,
+    .route-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 12px 0 0;
+    }
+    .asset-link,
+    .route-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid #d8c8b8;
+      background: #fff8f0;
+      color: #5d4d3f;
+      text-decoration: none;
+      font: 700 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .asset-link:hover,
+    .route-link:hover {
+      border-color: #b68b68;
+      background: #fff2e6;
+      color: #35291f;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>Asset Atlas</h1>
+    <p class="subtitle">
+      The `pages/assets/*` symbols are not decoration. They are obstacle inputs for the editorial demos and now have a dedicated, deep-linkable preview surface.
+    </p>
+    <div id="summaryPanel" class="panel" aria-live="polite"></div>
+    <nav id="assetRail" class="rail" aria-label="Asset focus rail"></nav>
+    <nav id="sizeRail" class="rail" aria-label="Preview size rail"></nav>
+    <section id="contextGrid" class="context-grid" aria-label="Asset atlas context"></section>
+    <section id="assetGrid" class="asset-grid" aria-label="Asset previews"></section>
+  </main>
+  <script type="module">
+    const ASSETS = [
+      {
+        key: 'openai',
+        label: 'OpenAI',
+        src: '/assets/openai-symbol.svg',
+        sourceHref: '/assets/openai-symbol.svg',
+        viewBox: '0 0 158.7128 157.296',
+        nativeSize: '158.7 × 157.3',
+        role: 'logo hull input',
+      },
+      {
+        key: 'claude',
+        label: 'Claude',
+        src: '/assets/claude-symbol.svg',
+        sourceHref: '/assets/claude-symbol.svg',
+        viewBox: '0 0 1200 1200',
+        nativeSize: '1200 × 1200',
+        role: 'logo hull input',
+      },
+    ]
+
+    const DEMO_LINKS = [
+      {
+        label: 'dynamic-layout',
+        href: '/demos/dynamic-layout?preset=spread-1365',
+        reportHref: '/demos/dynamic-layout?preset=spread-1365&report=1',
+        note: 'wrap hull spread',
+      },
+      {
+        label: 'editorial-engine',
+        href: '/demos/editorial-engine?preset=stacked-1365',
+        reportHref: '/demos/editorial-engine?preset=stacked-1365&report=1',
+        note: 'orb stack + copy flow',
+      },
+      {
+        label: 'emoji-test',
+        href: '/emoji-test?preset=dense',
+        reportHref: '/emoji-test?preset=dense&report=1',
+        note: 'probe handoff',
+      },
+      {
+        label: 'justification',
+        href: '/demos/justification-comparison?preset=river-tight',
+        reportHref: '/demos/justification-comparison?preset=river-tight&report=1',
+        note: 'probe handoff',
+      },
+    ]
+
+    const PREVIEW_SIZES = [48, 72, 96, 144]
+    const params = new URLSearchParams(location.search)
+    const requestedAsset = parseAssetParam(params.get('asset'))
+    const previewSize = parsePreviewSize(params.get('size'))
+
+    const summaryPanelNode = document.getElementById('summaryPanel')
+    const assetRailNode = document.getElementById('assetRail')
+    const sizeRailNode = document.getElementById('sizeRail')
+    const contextGridNode = document.getElementById('contextGrid')
+    const assetGridNode = document.getElementById('assetGrid')
+    if (!(summaryPanelNode instanceof HTMLElement)) throw new Error('#summaryPanel not found')
+    if (!(assetRailNode instanceof HTMLElement)) throw new Error('#assetRail not found')
+    if (!(sizeRailNode instanceof HTMLElement)) throw new Error('#sizeRail not found')
+    if (!(contextGridNode instanceof HTMLElement)) throw new Error('#contextGrid not found')
+    if (!(assetGridNode instanceof HTMLElement)) throw new Error('#assetGrid not found')
+
+    render()
+
+    function render() {
+      summaryPanelNode.textContent = [
+        `asset ${requestedAsset ?? 'all'}  preview ${previewSize}px`,
+        `files ${ASSETS.length}  editorial demos 2  probe handoff 2`,
+        requestedAsset === null
+          ? 'scope full atlas'
+          : `scope single asset (${requestedAsset})`,
+      ].join('\n')
+
+      renderAssetRail()
+      renderSizeRail()
+      renderContextGrid()
+      renderAssetGrid()
+    }
+
+    function renderAssetRail() {
+      const definitions = [
+        { label: 'All Assets', href: buildAtlasHref({ asset: null, size: previewSize }), active: requestedAsset === null },
+        ...ASSETS.map(asset => ({
+          label: asset.label,
+          href: buildAtlasHref({ asset: asset.key, size: previewSize }),
+          active: requestedAsset === asset.key,
+        })),
+      ]
+      assetRailNode.replaceChildren(...definitions.map(createRailLink))
+    }
+
+    function renderSizeRail() {
+      const definitions = PREVIEW_SIZES.map(size => ({
+        label: `${size}px`,
+        href: buildAtlasHref({ asset: requestedAsset, size }),
+        active: previewSize === size,
+      }))
+      sizeRailNode.replaceChildren(...definitions.map(createRailLink))
+    }
+
+    function renderContextGrid() {
+      const cards = [
+        createContextCard({
+          title: 'Atlas state',
+          badge: requestedAsset === null ? 'full' : requestedAsset,
+          rows: [
+            ['preview', `${previewSize}px`],
+            ['asset scope', requestedAsset ?? 'all'],
+            ['deep link', buildAtlasHref({ asset: requestedAsset, size: previewSize })],
+          ],
+        }),
+        createContextCard({
+          title: 'Demo handoff',
+          badge: '4 routes',
+          rows: [
+            ['obstacle demos', 'dynamic-layout, editorial-engine'],
+            ['probe pages', 'emoji-test, justification'],
+            ['source files', '/assets/openai-symbol.svg / claude-symbol.svg'],
+          ],
+        }),
+      ]
+      contextGridNode.replaceChildren(...cards)
+    }
+
+    function renderAssetGrid() {
+      const cards = ASSETS.map(asset => createAssetCard(asset))
+      assetGridNode.replaceChildren(...cards)
+    }
+
+    function createRailLink(definition) {
+      const link = document.createElement('a')
+      link.className = definition.active ? 'rail-link is-active' : 'rail-link'
+      link.href = definition.href
+      link.textContent = definition.label
+      return link
+    }
+
+    function createContextCard(definition) {
+      const article = document.createElement('article')
+      article.className = 'context-card'
+      const head = document.createElement('div')
+      head.className = 'card-head'
+      const title = document.createElement('span')
+      title.className = 'card-title'
+      title.textContent = definition.title
+      const badge = document.createElement('span')
+      badge.className = 'card-badge'
+      badge.textContent = definition.badge
+      head.append(title, badge)
+      article.append(head, ...definition.rows.map(([label, value]) => createRow('context-row', label, value)))
+      return article
+    }
+
+    function createAssetCard(asset) {
+      const article = document.createElement('article')
+      article.className = requestedAsset === asset.key ? 'asset-card is-focused' : 'asset-card'
+      if (requestedAsset !== null && requestedAsset !== asset.key) article.classList.add('is-hidden')
+
+      const preview = document.createElement('div')
+      preview.className = 'asset-preview'
+      preview.style.setProperty('--preview-size', `${previewSize}px`)
+      const image = document.createElement('img')
+      image.src = asset.src
+      image.alt = `${asset.label} symbol`
+      preview.append(image)
+
+      const body = document.createElement('div')
+      body.className = 'asset-body'
+
+      const head = document.createElement('div')
+      head.className = 'card-head'
+      const title = document.createElement('span')
+      title.className = 'card-title'
+      title.textContent = asset.label
+      const badge = document.createElement('span')
+      badge.className = 'card-badge'
+      badge.textContent = requestedAsset === asset.key ? 'focused' : 'asset'
+      head.append(title, badge)
+
+      const links = document.createElement('div')
+      links.className = 'asset-links'
+      links.append(
+        createPillLink('source svg', asset.sourceHref),
+        createPillLink('focus asset', buildAtlasHref({ asset: asset.key, size: previewSize })),
+        createPillLink('show all', buildAtlasHref({ asset: null, size: previewSize })),
+      )
+
+      const routeLinks = document.createElement('div')
+      routeLinks.className = 'route-links'
+      routeLinks.append(...DEMO_LINKS.flatMap(demo => [
+        createPillLink(`${demo.label}`, demo.href),
+        createPillLink(`${demo.label} report`, demo.reportHref),
+      ]))
+
+      body.append(
+        head,
+        createRow('asset-row', 'file', asset.sourceHref),
+        createRow('asset-row', 'role', asset.role),
+        createRow('asset-row', 'native', asset.nativeSize),
+        createRow('asset-row', 'viewBox', asset.viewBox),
+        createRow('asset-row', 'preview', `${previewSize}px`),
+        links,
+        routeLinks,
+      )
+
+      article.append(preview, body)
+      return article
+    }
+
+    function createRow(className, label, value) {
+      const row = document.createElement('div')
+      row.className = className
+      const left = document.createElement('span')
+      left.className = 'row-label'
+      left.textContent = label
+      const right = document.createElement('span')
+      right.className = 'row-value'
+      right.textContent = value
+      row.append(left, right)
+      return row
+    }
+
+    function createPillLink(label, href) {
+      const link = document.createElement('a')
+      link.className = 'asset-link'
+      link.href = href
+      link.textContent = label
+      return link
+    }
+
+    function buildAtlasHref(options) {
+      const next = new URLSearchParams()
+      if (options.asset !== null) next.set('asset', options.asset)
+      next.set('size', String(options.size))
+      return `${location.pathname}?${next.toString()}`
+    }
+
+    function parseAssetParam(raw) {
+      return raw === 'openai' || raw === 'claude' ? raw : null
+    }
+
+    function parsePreviewSize(raw) {
+      const parsed = Number.parseInt(raw ?? '', 10)
+      return PREVIEW_SIZES.includes(parsed) ? parsed : PREVIEW_SIZES[2]
+    }
+  </script>
+</body>
+</html>
