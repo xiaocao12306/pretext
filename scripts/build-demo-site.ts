@@ -70,6 +70,7 @@ async function moveBuiltHtml(sourceRelativePath: string, targetRelativePath: str
   const targetPath = path.join(outdir, targetRelativePath)
   let html = await readFile(sourcePath, 'utf8')
   html = rebaseRelativeAssetUrls(html, sourcePath, targetPath)
+  html = rewriteRootRelativeSiteLinks(html, targetRelativePath)
   html = rewriteDemoLinksForStaticRoot(html, targetRelativePath)
 
   await mkdir(path.dirname(targetPath), { recursive: true })
@@ -94,6 +95,37 @@ function rewriteDemoLinksForStaticRoot(html: string, targetRelativePath: string)
   return html
     .replace(/\bhref="\/demos\/([^"?#\/]+)([^"]*)"/g, (_match, slug: string, suffix: string) => `href="./${slug}${suffix}"`)
     .replace(/\bhref="\/(dynamic-layout|editorial-engine|justification-comparison|emoji-test)([^"]*)"/g, (_match, slug: string, suffix: string) => `href="./${slug}${suffix}"`)
+}
+
+function rewriteRootRelativeSiteLinks(html: string, targetRelativePath: string): string {
+  const routePrefixPattern = [
+    'assets',
+    'demos',
+    'emoji-test',
+    'dynamic-layout',
+    'editorial-engine',
+    'justification-comparison',
+    'accordion',
+    'bubbles',
+    'rich-note',
+    'variable-typographic-ascii',
+    'masonry',
+  ].join('|')
+  const quotedRootRelativePattern = new RegExp(`(["'\`])\\/((?:${routePrefixPattern})[^"'\\s<>\`]*?)\\1`, 'g')
+
+  return html.replace(quotedRootRelativePattern, (_match, quote: string, sitePath: string) => {
+    return `${quote}${toRelativeSiteHref(targetRelativePath, `/${sitePath}`)}${quote}`
+  })
+}
+
+function toRelativeSiteHref(targetRelativePath: string, rootRelativeHref: string): string {
+  const parsed = new URL(rootRelativeHref, 'https://pretext.invalid')
+  const targetDir = path.posix.dirname(targetRelativePath)
+  const normalizedPathname = parsed.pathname.replace(/^\/+/, '')
+  let relativePath = path.posix.relative(targetDir, normalizedPathname)
+  if (relativePath === '') relativePath = '.'
+  if (!relativePath.startsWith('.')) relativePath = `./${relativePath}`
+  return `${relativePath}${parsed.search}${parsed.hash}`
 }
 
 async function copyStaticAssetFiles(): Promise<void> {
