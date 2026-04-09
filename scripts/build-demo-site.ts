@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 const root = process.cwd()
@@ -49,6 +49,7 @@ for (let index = 0; index < targets.length; index++) {
   await moveBuiltHtml(entry.source, entry.target)
 }
 
+await copyStaticAssetFiles()
 await rm(path.join(outdir, 'pages'), { recursive: true, force: true })
 
 async function resolveBuiltHtmlPath(relativePath: string): Promise<string> {
@@ -93,4 +94,21 @@ function rewriteDemoLinksForStaticRoot(html: string, targetRelativePath: string)
   return html
     .replace(/\bhref="\/demos\/([^"?#\/]+)([^"]*)"/g, (_match, slug: string, suffix: string) => `href="./${slug}${suffix}"`)
     .replace(/\bhref="\/(dynamic-layout|editorial-engine|justification-comparison|emoji-test)([^"]*)"/g, (_match, slug: string, suffix: string) => `href="./${slug}${suffix}"`)
+}
+
+async function copyStaticAssetFiles(): Promise<void> {
+  const assetSourceDir = path.join(root, 'pages', 'assets')
+  const assetTargetDir = path.join(outdir, 'assets')
+  await mkdir(assetTargetDir, { recursive: true })
+
+  const entries = await readdir(assetSourceDir, { withFileTypes: true })
+  for (let index = 0; index < entries.length; index++) {
+    const entry = entries[index]!
+    if (!entry.isFile()) continue
+    if (entry.name === 'index.html') continue
+    await copyFile(
+      path.join(assetSourceDir, entry.name),
+      path.join(assetTargetDir, entry.name),
+    )
+  }
 }
