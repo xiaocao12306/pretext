@@ -1596,6 +1596,13 @@ function createAssetCard(
   title.className = 'asset-card-title'
   title.textContent = label
 
+  const links = document.createElement('div')
+  links.className = 'asset-card-links'
+  links.append(
+    createAssetAtlasLink(label, logo),
+    createAssetSourceLink(label),
+  )
+
   card.append(
     title,
     createAssetRow('angle', formatAngle(logo.angle)),
@@ -1603,7 +1610,8 @@ function createAssetCard(
     createAssetRow('origin', `${Math.round(logo.rect.x)}, ${Math.round(logo.rect.y)}`),
     createAssetRow('layout hull', String(logo.layoutHullPoints)),
     createAssetRow('hit hull', String(logo.hitHullPoints)),
-    createAssetSourceLink(label),
+    createAssetRow('atlas size', `${pickAssetAtlasPreviewSize(logo)}px`),
+    links,
   )
   return card
 }
@@ -1629,6 +1637,32 @@ function createAssetSourceLink(label: string): HTMLAnchorElement {
   link.rel = 'noreferrer'
   link.textContent = 'source svg'
   return link
+}
+
+function createAssetAtlasLink(
+  label: string,
+  logo: DynamicLayoutReport['logos']['openai'] | DynamicLayoutReport['logos']['claude'],
+): HTMLAnchorElement {
+  const link = document.createElement('a')
+  link.className = 'asset-card-source'
+  link.href = buildAssetAtlasHref(label, pickAssetAtlasPreviewSize(logo))
+  link.textContent = 'asset atlas'
+  return link
+}
+
+function buildAssetAtlasHref(label: string, size: number): string {
+  const asset = label === 'OpenAI' ? 'openai' : 'claude'
+  return `/assets/?asset=${asset}&size=${size}`
+}
+
+function pickAssetAtlasPreviewSize(
+  logo: DynamicLayoutReport['logos']['openai'] | DynamicLayoutReport['logos']['claude'],
+): 48 | 72 | 96 | 144 {
+  const target = Math.max(logo.rect.width, logo.rect.height)
+  if (target <= 60) return 48
+  if (target <= 84) return 72
+  if (target <= 120) return 96
+  return 144
 }
 
 function formatSummaryPanel(report: DynamicLayoutReport): string {
