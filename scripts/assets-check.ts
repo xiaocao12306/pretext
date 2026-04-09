@@ -33,6 +33,7 @@ type AssetAtlasReport = {
 type AssetRun = {
   asset: AssetKey | null
   size: number
+  pathMode: 'demo' | 'root'
 }
 
 type AssetSummaryRow = {
@@ -40,6 +41,7 @@ type AssetSummaryRow = {
   previewSize: number
   visibleAssetCount: number
   routeCount: number
+  pathMode: 'demo' | 'root'
 }
 
 function parseStringFlag(name: string): string | null {
@@ -82,19 +84,39 @@ function parseSizeList(raw: string | null): number[] {
   return [...new Set(sizes)]
 }
 
-function buildRuns(assets: Array<AssetKey | null>, sizes: number[]): AssetRun[] {
+function parsePathModes(raw: string | null): Array<'demo' | 'root'> {
+  const value = raw ?? process.env['ASSETS_CHECK_PATH_MODE'] ?? 'demo'
+  const modes = value
+    .split(',')
+    .map(part => part.trim().toLowerCase())
+    .filter(part => part.length > 0)
+    .map(part => {
+      if (part === 'demo' || part === 'root') return part
+      throw new Error(`Unknown path mode ${part}; expected demo or root`)
+    })
+  return [...new Set(modes)]
+}
+
+function buildRuns(
+  assets: Array<AssetKey | null>,
+  sizes: number[],
+  pathModes: Array<'demo' | 'root'>,
+): AssetRun[] {
   const runs: AssetRun[] = []
   for (let assetIndex = 0; assetIndex < assets.length; assetIndex++) {
     const asset = assets[assetIndex]!
     for (let sizeIndex = 0; sizeIndex < sizes.length; sizeIndex++) {
-      runs.push({ asset, size: sizes[sizeIndex]! })
+      const size = sizes[sizeIndex]!
+      for (let modeIndex = 0; modeIndex < pathModes.length; modeIndex++) {
+        runs.push({ asset, size, pathMode: pathModes[modeIndex]! })
+      }
     }
   }
   return runs
 }
 
 function formatRunLabel(run: AssetRun): string {
-  return `${run.asset ?? 'all'} @ ${run.size}px`
+  return `${run.asset ?? 'all'} @ ${run.size}px (${run.pathMode})`
 }
 
 function printReport(report: AssetAtlasReport): void {
@@ -147,6 +169,7 @@ function toSummaryRow(entry: { run: AssetRun; report: AssetAtlasReport }): Asset
     previewSize: report.previewSize ?? entry.run.size,
     visibleAssetCount: report.visibleAssetCount ?? 0,
     routeCount: report.routeCount ?? 0,
+    pathMode: entry.run.pathMode,
   }
 }
 
@@ -160,7 +183,7 @@ function printMatrixSummary(entries: Array<{ run: AssetRun; report: AssetAtlasRe
   for (let index = 0; index < rows.length; index++) {
     const row = rows[index]!
     console.log(
-      `  ${row.label} -> preview ${row.previewSize}px | visible ${row.visibleAssetCount} | routes ${row.routeCount}`,
+      `  ${row.label} -> preview ${row.previewSize}px | visible ${row.visibleAssetCount} | routes ${row.routeCount} | path ${row.pathMode}`,
     )
   }
 }
@@ -168,7 +191,8 @@ function printMatrixSummary(entries: Array<{ run: AssetRun; report: AssetAtlasRe
 const browser = parseBrowser(parseStringFlag('browser'))
 const assets = parseAssetList(parseStringFlag('assets'))
 const sizes = parseSizeList(parseStringFlag('sizes'))
-const runs = buildRuns(assets, sizes)
+const pathModes = parsePathModes(parseStringFlag('pathMode'))
+const runs = buildRuns(assets, sizes, pathModes)
 const output = parseStringFlag('output')
 const requestedPortRaw = parseStringFlag('port')
 const requestedPort = requestedPortRaw === null ? null : Number.parseInt(requestedPortRaw, 10)
@@ -187,8 +211,9 @@ try {
   for (let index = 0; index < runs.length; index++) {
     const run = runs[index]!
     const requestId = `${Date.now()}-${run.asset ?? 'all'}-${run.size}-${Math.random().toString(36).slice(2, 8)}`
+    const basePath = run.pathMode === 'root' ? '/assets' : '/assets/'
     const url =
-      `${pageServer.baseUrl}/assets/?report=1` +
+      `${pageServer.baseUrl}${basePath}?report=1` +
       `&requestId=${encodeURIComponent(requestId)}` +
       (run.asset === null ? '' : `&asset=${encodeURIComponent(run.asset)}`) +
       `&size=${encodeURIComponent(String(run.size))}`

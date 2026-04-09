@@ -77,6 +77,7 @@
       color: #402d22;
     }
     .context-grid,
+    .route-card-grid,
     .asset-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -84,6 +85,7 @@
       margin: 0 0 18px;
     }
     .context-card,
+    .route-card,
     .asset-card {
       border: 1px solid #dccfc0;
       border-radius: 18px;
@@ -92,6 +94,16 @@
     }
     .context-card {
       padding: 14px 16px;
+    }
+    .route-card {
+      display: block;
+      padding: 14px 16px;
+      color: inherit;
+      text-decoration: none;
+    }
+    .route-card:hover {
+      border-color: #ba8d69;
+      background: rgba(255, 247, 238, 0.94);
     }
     .asset-card {
       overflow: hidden;
@@ -130,8 +142,16 @@
       font: 12px/1.5 "SF Mono", ui-monospace, monospace;
     }
     .context-row + .context-row,
+    .route-row + .route-row,
     .asset-row + .asset-row {
       margin-top: 3px;
+    }
+    .route-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: #5f5347;
+      font: 12px/1.5 "SF Mono", ui-monospace, monospace;
     }
     .row-label { color: #8a7c6e; }
     .row-value { text-align: right; color: #3c322a; }
@@ -211,6 +231,7 @@
     <nav id="assetRail" class="rail" aria-label="Asset focus rail"></nav>
     <nav id="sizeRail" class="rail" aria-label="Preview size rail"></nav>
     <section id="contextGrid" class="context-grid" aria-label="Asset atlas context"></section>
+    <section id="routeCardGrid" class="route-card-grid" aria-label="Asset atlas routes"></section>
     <section id="assetGrid" class="asset-grid" aria-label="Asset previews"></section>
   </main>
   <script type="module">
@@ -306,11 +327,13 @@
     const assetRailNode = document.getElementById('assetRail')
     const sizeRailNode = document.getElementById('sizeRail')
     const contextGridNode = document.getElementById('contextGrid')
+    const routeCardGridNode = document.getElementById('routeCardGrid')
     const assetGridNode = document.getElementById('assetGrid')
     if (!(summaryPanelNode instanceof HTMLElement)) throw new Error('#summaryPanel not found')
     if (!(assetRailNode instanceof HTMLElement)) throw new Error('#assetRail not found')
     if (!(sizeRailNode instanceof HTMLElement)) throw new Error('#sizeRail not found')
     if (!(contextGridNode instanceof HTMLElement)) throw new Error('#contextGrid not found')
+    if (!(routeCardGridNode instanceof HTMLElement)) throw new Error('#routeCardGrid not found')
     if (!(assetGridNode instanceof HTMLElement)) throw new Error('#assetGrid not found')
 
     if (reportRequested) {
@@ -334,6 +357,7 @@
       renderAssetRail()
       renderSizeRail()
       renderContextGrid()
+      renderRouteCards()
       renderAssetGrid()
     }
 
@@ -409,6 +433,11 @@
       assetGridNode.replaceChildren(...cards)
     }
 
+    function renderRouteCards() {
+      const cards = buildScenarioCardDefinitions().map(createRouteCard)
+      routeCardGridNode.replaceChildren(...cards)
+    }
+
     function createRailLink(definition) {
       const link = document.createElement('a')
       link.className = definition.active ? 'rail-link is-active' : 'rail-link'
@@ -431,6 +460,30 @@
       head.append(title, badge)
       article.append(head, ...definition.rows.map(([label, value]) => createRow('context-row', label, value)))
       return article
+    }
+
+    function createRouteCard(definition) {
+      const link = document.createElement('a')
+      link.className = 'route-card'
+      link.href = definition.href
+
+      const head = document.createElement('div')
+      head.className = 'card-head'
+      const title = document.createElement('span')
+      title.className = 'card-title'
+      title.textContent = definition.label
+      const badge = document.createElement('span')
+      badge.className = 'card-badge'
+      badge.textContent = definition.route
+      head.append(title, badge)
+
+      link.append(
+        head,
+        createRow('route-row', 'focus', definition.focus),
+        createRow('route-row', 'size', `${previewSize}px`),
+        createRow('route-row', 'path', definition.path),
+      )
+      return link
     }
 
     function createAssetCard(asset) {
@@ -515,6 +568,57 @@
       if (options.asset !== null) next.set('asset', options.asset)
       next.set('size', String(options.size))
       return `${location.pathname}?${next.toString()}`
+    }
+
+    function buildScenarioCardDefinitions() {
+      const query = buildScenarioQuery()
+      const demoPath = normalizeAssetAtlasPath(location.pathname, 'demo')
+      const rootPath = normalizeAssetAtlasPath(location.pathname, 'root')
+      return [
+        {
+          label: 'Demo path',
+          href: `${demoPath}${query}`,
+          route: 'interactive',
+          focus: requestedAsset ?? 'all',
+          path: demoPath,
+        },
+        {
+          label: 'Root alias',
+          href: `${rootPath}${query}`,
+          route: 'redirect',
+          focus: requestedAsset ?? 'all',
+          path: rootPath,
+        },
+        {
+          label: 'Report run',
+          href: `${demoPath}${appendReportQuery(query)}`,
+          route: 'checker',
+          focus: requestedAsset ?? 'all',
+          path: `${demoPath}?report=1`,
+        },
+      ]
+    }
+
+    function buildScenarioQuery() {
+      const next = new URLSearchParams()
+      if (requestedAsset !== null) next.set('asset', requestedAsset)
+      next.set('size', String(previewSize))
+      const query = next.toString()
+      return query.length === 0 ? '' : `?${query}`
+    }
+
+    function appendReportQuery(query) {
+      const next = new URLSearchParams(query.startsWith('?') ? query.slice(1) : query)
+      next.set('report', '1')
+      return `?${next.toString()}`
+    }
+
+    function normalizeAssetAtlasPath(pathname, target) {
+      if (target === 'demo') {
+        return pathname.endsWith('/assets') ? `${pathname}/` : pathname
+      }
+      if (pathname.endsWith('/assets/')) return pathname.slice(0, -1)
+      return pathname.replace(/\/assets\/index\.html$/, '/assets')
     }
 
     function parseAssetParam(raw) {
