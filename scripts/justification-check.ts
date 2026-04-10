@@ -71,6 +71,7 @@ type JustificationReport = {
 
 type JustificationSummaryRow = {
   preset: string
+  pathMode: 'root' | 'demo'
   width: number
   showIndicators: boolean
   cssOverlayRiverCount: number
@@ -90,6 +91,7 @@ type JustificationRun = {
   showIndicators: boolean
   presetKey?: JustificationProbePreset['key']
   focusColumn: 'css' | 'hyphen' | 'optimal' | null
+  pathMode: 'root' | 'demo'
 }
 
 function parseStringFlag(name: string): string | null {
@@ -154,20 +156,37 @@ function parseFocusColumn(raw: string | null): 'css' | 'hyphen' | 'optimal' | nu
   return null
 }
 
+function parsePathModes(raw: string | null): Array<'root' | 'demo'> {
+  const value = raw ?? process.env['JUSTIFICATION_CHECK_PATH_MODE'] ?? 'demo,root'
+  const modes = value
+    .split(',')
+    .map(part => part.trim().toLowerCase())
+    .filter(part => part.length > 0)
+    .map(part => {
+      if (part === 'root' || part === 'demo') return part
+      throw new Error(`Unknown path mode ${part}; expected root or demo`)
+    })
+  return [...new Set(modes)]
+}
+
 function buildRuns(
   presets: JustificationProbePreset[],
   widths: number[],
   showIndicators: boolean[],
   focusColumn: 'css' | 'hyphen' | 'optimal' | null,
+  pathModes: Array<'root' | 'demo'>,
 ): JustificationRun[] {
   if (presets.length > 0) {
-    return presets.map(preset => ({
-      label: preset.key,
-      width: preset.width,
-      showIndicators: preset.showIndicators,
-      presetKey: preset.key,
-      focusColumn,
-    }))
+    return presets.flatMap(preset =>
+      pathModes.map(pathMode => ({
+        label: preset.key,
+        width: preset.width,
+        showIndicators: preset.showIndicators,
+        presetKey: preset.key,
+        focusColumn,
+        pathMode,
+      })),
+    )
   }
 
   const runs: JustificationRun[] = []
@@ -175,12 +194,16 @@ function buildRuns(
     const width = widths[widthIndex]!
     for (let indicatorIndex = 0; indicatorIndex < showIndicators.length; indicatorIndex++) {
       const indicatorMode = showIndicators[indicatorIndex]!
-      runs.push({
-        label: `${width}px ${indicatorMode ? 'indicators-on' : 'indicators-off'}`,
-        width,
-        showIndicators: indicatorMode,
-        focusColumn,
-      })
+      for (let pathModeIndex = 0; pathModeIndex < pathModes.length; pathModeIndex++) {
+        const pathMode = pathModes[pathModeIndex]!
+        runs.push({
+          label: `${width}px ${indicatorMode ? 'indicators-on' : 'indicators-off'}`,
+          width,
+          showIndicators: indicatorMode,
+          focusColumn,
+          pathMode,
+        })
+      }
     }
   }
   return runs
@@ -188,8 +211,8 @@ function buildRuns(
 
 function formatRunLabel(run: JustificationRun): string {
   return run.presetKey === undefined
-    ? `${run.label}${run.focusColumn === null ? '' : ` @ ${run.focusColumn}`}`
-    : `${run.presetKey} (${run.width}px, ${run.showIndicators ? 'indicators-on' : 'indicators-off'}${run.focusColumn === null ? '' : ` @ ${run.focusColumn}`})`
+    ? `${run.label} [${run.pathMode}]${run.focusColumn === null ? '' : ` @ ${run.focusColumn}`}`
+    : `${run.presetKey} (${run.width}px, ${run.showIndicators ? 'indicators-on' : 'indicators-off'}, ${run.pathMode}${run.focusColumn === null ? '' : ` @ ${run.focusColumn}`})`
 }
 
 function printReport(report: JustificationReport): void {
@@ -309,6 +332,7 @@ function toMatrixSummaryRow(entry: { run: JustificationRun; report: Justificatio
   if (report.controls === undefined || report.comparisons === undefined || report.bestColumns === undefined) return null
   return {
     preset: report.presetKey ?? entry.run.label,
+    pathMode: entry.run.pathMode,
     width: report.controls.colWidth,
     showIndicators: report.controls.showIndicators,
     cssOverlayRiverCount: report.cssOverlayRiverCount ?? 0,
@@ -350,7 +374,7 @@ function printMatrixSummary(entries: Array<{ run: JustificationRun; report: Just
       `rivers ${row.cssOverlayRiverCount} | ` +
       `best avg ${row.bestAvg} | best river ${row.bestRiver} | ` +
       `Δhyphen ${formatSignedPercent(row.hyphenAvgDelta)} | Δoptimal ${formatSignedPercent(row.optimalAvgDelta)} | ` +
-      `routes ${row.routeCount} | asset ${row.assetPreviewSize ?? '?'}px`,
+      `path ${row.pathMode} | routes ${row.routeCount} | asset ${row.assetPreviewSize ?? '?'}px`,
     )
   }
 }
@@ -360,7 +384,8 @@ const widths = parseWidths(parseStringFlag('widths'))
 const showIndicators = parseShowIndicatorModes(parseStringFlag('showIndicators'))
 const presets = parsePresetKeys(parseStringFlag('presets'))
 const focusColumn = parseFocusColumn(parseStringFlag('focusColumn'))
-const runs = buildRuns(presets, widths, showIndicators, focusColumn)
+const pathModes = parsePathModes(parseStringFlag('pathMode'))
+const runs = buildRuns(presets, widths, showIndicators, focusColumn, pathModes)
 const output = parseStringFlag('output')
 const requestedPortRaw = parseStringFlag('port')
 const requestedPort = requestedPortRaw === null ? null : Number.parseInt(requestedPortRaw, 10)
@@ -379,14 +404,15 @@ try {
   for (let index = 0; index < runs.length; index++) {
     const run = runs[index]!
     const requestId = `${Date.now()}-${run.width}-${run.showIndicators ? '1' : '0'}-${Math.random().toString(36).slice(2, 8)}`
+    const basePath = run.pathMode === 'root' ? '/justification-comparison' : '/demos/justification-comparison'
     const url =
       run.presetKey === undefined
-        ? `${pageServer.baseUrl}/demos/justification-comparison?report=1` +
+        ? `${pageServer.baseUrl}${basePath}?report=1` +
           `&width=${run.width}` +
           `&showIndicators=${run.showIndicators ? '1' : '0'}` +
           (run.focusColumn === null ? '' : `&focusColumn=${encodeURIComponent(run.focusColumn)}`) +
           `&requestId=${encodeURIComponent(requestId)}`
-        : `${pageServer.baseUrl}/demos/justification-comparison?report=1` +
+        : `${pageServer.baseUrl}${basePath}?report=1` +
           `&preset=${encodeURIComponent(run.presetKey)}` +
           (run.focusColumn === null ? '' : `&focusColumn=${encodeURIComponent(run.focusColumn)}`) +
           `&requestId=${encodeURIComponent(requestId)}`

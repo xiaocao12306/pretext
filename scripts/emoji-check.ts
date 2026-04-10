@@ -76,6 +76,7 @@ type EmojiReport = {
 
 type EmojiSummaryRow = {
   preset: string
+  pathMode: 'root' | 'demo'
   constantAcrossAllSizes: boolean
   totalMismatchObservations: number
   variableSizeCount: number
@@ -117,6 +118,19 @@ function parseSizes(raw: string | null): number[] {
     .map(part => Number.parseInt(part.trim(), 10))
     .filter(value => Number.isFinite(value) && value > 0)
   return parsed.length === 0 ? fallback.slice() : parsed
+}
+
+function parsePathModes(raw: string | null): Array<'root' | 'demo'> {
+  const value = raw ?? process.env['EMOJI_CHECK_PATH_MODE'] ?? 'root,demo'
+  const modes = value
+    .split(',')
+    .map(part => part.trim().toLowerCase())
+    .filter(part => part.length > 0)
+    .map(part => {
+      if (part === 'root' || part === 'demo') return part
+      throw new Error(`Unknown path mode ${part}; expected root or demo`)
+    })
+  return [...new Set(modes)]
 }
 
 function parsePresetKeys(raw: string | null): EmojiProbePreset[] {
@@ -198,7 +212,7 @@ function formatRange(min: number, max: number): string {
   return min === max ? String(min) : `${min}..${max}`
 }
 
-function toSummaryRow(entry: { preset: EmojiProbePreset['key']; report: EmojiReport }): EmojiSummaryRow | null {
+function toSummaryRow(entry: { preset: string; pathMode: 'root' | 'demo'; report: EmojiReport }): EmojiSummaryRow | null {
   const report = entry.report
   if (report.status === 'error') return null
   const sizeSummaries = report.sizeSummaries ?? []
@@ -211,6 +225,7 @@ function toSummaryRow(entry: { preset: EmojiProbePreset['key']; report: EmojiRep
   }, null)
   return {
     preset: report.presetKey ?? entry.preset,
+    pathMode: entry.pathMode,
     constantAcrossAllSizes: report.constantAcrossAllSizes ?? false,
     totalMismatchObservations: report.totalMismatchObservations ?? 0,
     variableSizeCount: (report.variableSizes ?? []).length,
@@ -223,7 +238,7 @@ function toSummaryRow(entry: { preset: EmojiProbePreset['key']; report: EmojiRep
   }
 }
 
-function printMatrixSummary(entries: Array<{ preset: EmojiProbePreset['key']; report: EmojiReport }>): void {
+function printMatrixSummary(entries: Array<{ preset: string; pathMode: 'root' | 'demo'; report: EmojiReport }>): void {
   const rows = entries
     .map(toSummaryRow)
     .filter((row): row is EmojiSummaryRow => row !== null)
@@ -252,7 +267,7 @@ function printMatrixSummary(entries: Array<{ preset: EmojiProbePreset['key']; re
       `mismatch ${row.totalMismatchObservations} | variable sizes ${row.variableSizeCount} | ` +
       `max variance ${row.maxVariance.toFixed(2)}px | noisy fonts ${row.noisyFontCount}` +
       (row.hottestFont === null ? '' : ` | hot ${row.hottestFont}`) +
-      ` | routes ${row.routeCount} | asset ${row.assetPreviewSize ?? '?'}px | focus ${row.focus}`,
+      ` | path ${row.pathMode} | routes ${row.routeCount} | asset ${row.assetPreviewSize ?? '?'}px | focus ${row.focus}`,
     )
   }
 }
@@ -340,6 +355,7 @@ const threshold = parseStringFlag('threshold')
 const presets = parsePresetKeys(parseStringFlag('presets'))
 const focusSize = parseOptionalPositiveInt(parseStringFlag('focusSize'))
 const focusFont = parseStringFlag('focusFont')
+const pathModes = parsePathModes(parseStringFlag('pathMode'))
 
 let serverProcess: ChildProcess | null = null
 const lock = await acquireBrowserAutomationLock(browser)
@@ -351,58 +367,68 @@ try {
   serverProcess = pageServer.process
 
   if (presets.length === 0) {
-    const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-    const url =
-      `${pageServer.baseUrl}/emoji-test?report=1` +
-      `&requestId=${encodeURIComponent(requestId)}` +
-      (sizes === null ? '' : `&sizes=${encodeURIComponent(sizes)}`) +
-      (threshold === null ? '' : `&threshold=${encodeURIComponent(threshold)}`) +
-      (focusSize === null ? '' : `&focusSize=${encodeURIComponent(String(focusSize))}`) +
-      (focusFont === null ? '' : `&focusFont=${encodeURIComponent(focusFont)}`)
-    const report = await loadHashReport<EmojiReport>(session, url, requestId, browser, timeoutMs)
-    printReport(report)
-
-    if (output !== null) {
-      writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
-      console.log(`wrote ${output}`)
-    }
-
-    if (report.status === 'error') {
-      process.exitCode = 1
-    } else if (
-      !validateFocusReport(report, { size: focusSize, fontFamily: focusFont }) ||
-      !validateRouteReport(report, {
-        routeCount: 5,
-        assetPreviewSize: expectedEmojiAssetPreviewSize(parsedSizes, { size: focusSize, fontFamily: focusFont }),
-      })
-    ) {
-      process.exitCode = 1
-    }
-  } else {
-    const reports: Array<{ preset: EmojiProbePreset['key']; report: EmojiReport }> = []
-    for (let index = 0; index < presets.length; index++) {
-      const preset = presets[index]!
-      const requestId = `${Date.now()}-${preset.key}-${Math.random().toString(36).slice(2, 8)}`
+    const reports: Array<{ preset: string; pathMode: 'root' | 'demo'; report: EmojiReport }> = []
+    for (let index = 0; index < pathModes.length; index++) {
+      const pathMode = pathModes[index]!
+      const basePath = pathMode === 'root' ? '/emoji-test' : '/demos/emoji-test'
+      const requestId = `${Date.now()}-${pathMode}-${Math.random().toString(36).slice(2, 8)}`
       const url =
-        `${pageServer.baseUrl}/emoji-test?report=1` +
+        `${pageServer.baseUrl}${basePath}?report=1` +
         `&requestId=${encodeURIComponent(requestId)}` +
-        `&preset=${encodeURIComponent(preset.key)}` +
+        (sizes === null ? '' : `&sizes=${encodeURIComponent(sizes)}`) +
+        (threshold === null ? '' : `&threshold=${encodeURIComponent(threshold)}`) +
         (focusSize === null ? '' : `&focusSize=${encodeURIComponent(String(focusSize))}`) +
         (focusFont === null ? '' : `&focusFont=${encodeURIComponent(focusFont)}`)
       const report = await loadHashReport<EmojiReport>(session, url, requestId, browser, timeoutMs)
-      console.log(`[preset:${preset.key}]`)
+      console.log(`[manual:${pathMode}]`)
       printReport(report)
-      reports.push({ preset: preset.key, report })
+      reports.push({ preset: 'manual', pathMode, report })
+
       if (
         report.status === 'error' ||
-        !validatePresetReport(report, preset.key) ||
         !validateFocusReport(report, { size: focusSize, fontFamily: focusFont }) ||
         !validateRouteReport(report, {
           routeCount: 5,
-          assetPreviewSize: expectedEmojiAssetPreviewSize(preset.sizes, { size: focusSize, fontFamily: focusFont }),
+          assetPreviewSize: expectedEmojiAssetPreviewSize(parsedSizes, { size: focusSize, fontFamily: focusFont }),
         })
       ) {
         process.exitCode = 1
+      }
+    }
+
+    if (output !== null) {
+      writeFileSync(output, `${JSON.stringify(reports, null, 2)}\n`, 'utf8')
+      console.log(`wrote ${output}`)
+    }
+  } else {
+    const reports: Array<{ preset: string; pathMode: 'root' | 'demo'; report: EmojiReport }> = []
+    for (let index = 0; index < presets.length; index++) {
+      const preset = presets[index]!
+      for (let modeIndex = 0; modeIndex < pathModes.length; modeIndex++) {
+        const pathMode = pathModes[modeIndex]!
+        const basePath = pathMode === 'root' ? '/emoji-test' : '/demos/emoji-test'
+        const requestId = `${Date.now()}-${preset.key}-${pathMode}-${Math.random().toString(36).slice(2, 8)}`
+        const url =
+          `${pageServer.baseUrl}${basePath}?report=1` +
+          `&requestId=${encodeURIComponent(requestId)}` +
+          `&preset=${encodeURIComponent(preset.key)}` +
+          (focusSize === null ? '' : `&focusSize=${encodeURIComponent(String(focusSize))}`) +
+          (focusFont === null ? '' : `&focusFont=${encodeURIComponent(focusFont)}`)
+        const report = await loadHashReport<EmojiReport>(session, url, requestId, browser, timeoutMs)
+        console.log(`[preset:${preset.key}:${pathMode}]`)
+        printReport(report)
+        reports.push({ preset: preset.key, pathMode, report })
+        if (
+          report.status === 'error' ||
+          !validatePresetReport(report, preset.key) ||
+          !validateFocusReport(report, { size: focusSize, fontFamily: focusFont }) ||
+          !validateRouteReport(report, {
+            routeCount: 5,
+            assetPreviewSize: expectedEmojiAssetPreviewSize(preset.sizes, { size: focusSize, fontFamily: focusFont }),
+          })
+        ) {
+          process.exitCode = 1
+        }
       }
     }
 

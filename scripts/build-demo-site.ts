@@ -8,12 +8,14 @@ const entrypoints = [
   'pages/demos/accordion.html',
   'pages/demos/bubbles.html',
   'pages/demos/dynamic-layout.html',
+  'pages/demos/emoji-test.html',
   'pages/demos/editorial-engine.html',
   'pages/demos/justification-comparison.html',
   'pages/demos/masonry/index.html',
   'pages/demos/rich-note.html',
   'pages/demos/variable-typographic-ascii.html',
   'pages/emoji-test.html',
+  'pages/justification-comparison.html',
   'pages/assets.html',
   'pages/assets/index.html',
 ]
@@ -36,12 +38,14 @@ const targets = [
   { source: 'accordion.html', target: 'accordion/index.html' },
   { source: 'bubbles.html', target: 'bubbles/index.html' },
   { source: 'dynamic-layout.html', target: 'dynamic-layout/index.html' },
+  { source: 'pages/demos/emoji-test.html', target: 'demos/emoji-test.html' },
   { source: 'editorial-engine.html', target: 'editorial-engine/index.html' },
   { source: 'justification-comparison.html', target: 'justification-comparison/index.html' },
   { source: 'masonry/index.html', target: 'masonry/index.html' },
   { source: 'rich-note.html', target: 'rich-note/index.html' },
   { source: 'variable-typographic-ascii.html', target: 'variable-typographic-ascii/index.html' },
   { source: 'emoji-test.html', target: 'emoji-test/index.html' },
+  { source: 'pages/justification-comparison.html', target: 'justification-comparison.html' },
   { source: 'assets.html', target: 'assets.html' },
   { source: 'assets/index.html', target: 'assets/index.html' },
 ]
@@ -55,10 +59,15 @@ await copyStaticAssetFiles()
 await rm(path.join(outdir, 'pages'), { recursive: true, force: true })
 
 async function resolveBuiltHtmlPath(relativePath: string): Promise<string> {
+  const normalizedPath = relativePath.replace(/^\.\/+/, '')
+  const strippedPagesPath = normalizedPath.replace(/^pages\//, '')
   const candidates = [
-    path.join(outdir, relativePath),
-    path.join(outdir, 'pages', relativePath),
-    path.join(outdir, 'pages', 'demos', relativePath),
+    path.join(outdir, normalizedPath),
+    path.join(outdir, strippedPagesPath),
+    path.join(outdir, 'pages', normalizedPath),
+    path.join(outdir, 'pages', strippedPagesPath),
+    path.join(outdir, 'pages', 'demos', normalizedPath),
+    path.join(outdir, 'pages', 'demos', strippedPagesPath),
   ]
   for (let index = 0; index < candidates.length; index++) {
     const candidate = candidates[index]!
