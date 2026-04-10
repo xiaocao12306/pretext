@@ -255,7 +255,8 @@
      *   visibleAssetCount: number
      *   focusAsset: 'openai' | 'claude' | null
      *   previewSize: number
-     *   routeCount: number
+     *   scenarioRouteCount: number
+     *   handoffRouteCount: number
      *   assets: Array<{
      *     key: 'openai' | 'claude'
      *     label: string
@@ -346,9 +347,10 @@
     if (reportRequested) publishNavigationReport(buildReport())
 
     function render() {
+      const scenarioCardCount = buildScenarioCardDefinitions().length
       summaryPanelNode.textContent = [
         `asset ${requestedAsset ?? 'all'}  preview ${previewSize}px`,
-        `files ${ASSETS.length}  editorial demos 2  probe handoff 2`,
+        `files ${ASSETS.length}  scenario cards ${scenarioCardCount}  handoff routes ${DEMO_LINKS.length}`,
         requestedAsset === null
           ? 'scope full atlas'
           : `scope single asset (${requestedAsset})`,
@@ -371,6 +373,7 @@
         viewBox: asset.viewBox,
         nativeSize: asset.nativeSize,
       }))
+      const scenarioRouteCount = buildScenarioCardDefinitions().length
 
       return withRequestId({
         status: 'ready',
@@ -378,7 +381,8 @@
         visibleAssetCount: assets.filter(asset => asset.visible).length,
         focusAsset: requestedAsset,
         previewSize,
-        routeCount: DEMO_LINKS.length,
+        scenarioRouteCount,
+        handoffRouteCount: DEMO_LINKS.length,
         assets,
       })
     }
@@ -417,11 +421,20 @@
         }),
         createContextCard({
           title: 'Demo handoff',
-          badge: '4 routes',
+          badge: `${DEMO_LINKS.length} handoffs`,
           rows: [
             ['obstacle demos', 'dynamic-layout, editorial-engine'],
             ['probe pages', 'emoji-test, justification'],
             ['source files', '/assets/openai-symbol.svg / claude-symbol.svg'],
+          ],
+        }),
+        createContextCard({
+          title: 'Route protocol',
+          badge: `${buildScenarioCardDefinitions().length}+${DEMO_LINKS.length}`,
+          rows: [
+            ['scenario cards', String(buildScenarioCardDefinitions().length)],
+            ['handoff routes', String(DEMO_LINKS.length)],
+            ['checker paths', '/assets + /assets/'],
           ],
         }),
       ]

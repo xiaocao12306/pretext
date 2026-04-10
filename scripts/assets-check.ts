@@ -18,7 +18,8 @@ type AssetAtlasReport = {
   visibleAssetCount?: number
   focusAsset?: AssetKey | null
   previewSize?: number
-  routeCount?: number
+  scenarioRouteCount?: number
+  handoffRouteCount?: number
   assets?: Array<{
     key: AssetKey
     label: string
@@ -40,7 +41,8 @@ type AssetSummaryRow = {
   label: string
   previewSize: number
   visibleAssetCount: number
-  routeCount: number
+  scenarioRouteCount: number
+  handoffRouteCount: number
   pathMode: 'demo' | 'root'
 }
 
@@ -129,7 +131,7 @@ function printReport(report: AssetAtlasReport): void {
     `focus ${report.focusAsset ?? 'all'} | ` +
     `preview ${report.previewSize ?? '?'}px | ` +
     `visible ${report.visibleAssetCount ?? '?'} / ${report.assetCount ?? '?'} | ` +
-    `routes ${report.routeCount ?? '?'}`,
+    `scenario ${report.scenarioRouteCount ?? '?'} | handoff ${report.handoffRouteCount ?? '?'}`,
   )
 
   for (const asset of report.assets ?? []) {
@@ -154,8 +156,12 @@ function validateReport(report: AssetAtlasReport, run: AssetRun): boolean {
     console.log(`protocol error: expected visibleAssetCount ${expectedVisibleCount}, received ${report.visibleAssetCount ?? 'none'}`)
     return false
   }
-  if (report.routeCount !== 4) {
-    console.log(`protocol error: expected routeCount 4, received ${report.routeCount ?? 'none'}`)
+  if (report.scenarioRouteCount !== 3) {
+    console.log(`protocol error: expected scenarioRouteCount 3, received ${report.scenarioRouteCount ?? 'none'}`)
+    return false
+  }
+  if (report.handoffRouteCount !== 4) {
+    console.log(`protocol error: expected handoffRouteCount 4, received ${report.handoffRouteCount ?? 'none'}`)
     return false
   }
   return true
@@ -168,7 +174,8 @@ function toSummaryRow(entry: { run: AssetRun; report: AssetAtlasReport }): Asset
     label: entry.run.asset ?? 'all',
     previewSize: report.previewSize ?? entry.run.size,
     visibleAssetCount: report.visibleAssetCount ?? 0,
-    routeCount: report.routeCount ?? 0,
+    scenarioRouteCount: report.scenarioRouteCount ?? 0,
+    handoffRouteCount: report.handoffRouteCount ?? 0,
     pathMode: entry.run.pathMode,
   }
 }
@@ -183,7 +190,7 @@ function printMatrixSummary(entries: Array<{ run: AssetRun; report: AssetAtlasRe
   for (let index = 0; index < rows.length; index++) {
     const row = rows[index]!
     console.log(
-      `  ${row.label} -> preview ${row.previewSize}px | visible ${row.visibleAssetCount} | routes ${row.routeCount} | path ${row.pathMode}`,
+      `  ${row.label} -> preview ${row.previewSize}px | visible ${row.visibleAssetCount} | scenario ${row.scenarioRouteCount} | handoff ${row.handoffRouteCount} | path ${row.pathMode}`,
     )
   }
 }
